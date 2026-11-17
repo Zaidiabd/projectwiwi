@@ -150,7 +150,7 @@ high-speed intensity:
     **Lily** joins the chase alongside Wiwi while Wiwi displays an
     annoyed pulsing anger symbol (`💢`) overhead.
 -   `216s`: Final leap into Act 5 (`The Laser Reveal`): clearing
-    `>= 14,000 m` lets Wiwi beat Lily to the laser (`UNIVERSE DESTROYED.
+    `>= 22,000 m` lets Wiwi beat Lily to the laser (`UNIVERSE DESTROYED.
     LASER ACQUIRED.`); falling short lets Lily steal it instead.
 
 ### Act 1 --- The Chase
@@ -823,32 +823,35 @@ and restarted without refreshing the page.
 ## 12. Current workspace and prototype status
 
 **Current workspace state (`projectwiwi`):** A modular, zero-build
-GitHub Pages-ready implementation has been scaffolded across
-`index.html`, `README.md`, `styles/main.css`, `src/` (25 ES modules),
-and `assets/`:
+GitHub Pages-ready implementation deployed at
+`https://zaidiabd.github.io/projectwiwi/` across `index.html`,
+`README.md`, `styles/main.css`, `src/` (28 ES modules), and `assets/`:
 
 -   **Character & 2D-in-3D integration:** Gray British Shorthair
     Munchkin design sheet saved at
-    `assets/characters/wiwi-munchkin/design-sheet.jpg`; runtime
-    `2048x2048` 13-clip Munchkin sprite atlas (`ProceduralCatAtlas.js`),
-    `CatAnimator.js`, rim-lit `ShaderMaterial` sprite plane, grounded
-    contact shadow (`CatController.js`), and predictive AI playthrough
-    controller (`AutopilotAI.js`).
+    `assets/characters/wiwi-munchkin/design-sheet.jpg`; painterly
+    `2048x2048` 15-clip Munchkin sprite atlas (`ProceduralCatAtlas.js`),
+    6-clip tuxedo rival atlas (`LilyCatAtlas.js` + `LilyController.js`),
+    `CatAnimator.js`, optional external `SpriteAtlasLoader.js`, rim-lit
+    `ShaderMaterial` sprite plane, grounded contact shadow
+    (`CatController.js`), and predictive AI playthrough controller
+    (`AutopilotAI.js`).
 -   **3D worlds, effects & post-processing:** `InstancedMesh` corridor,
-    speed void, floating rift shards, standard + swaying anomaly
-    obstacles, pooled cyan/violet/gold-crimson afterimages, pooled 3D
-    lightning + cat body charges, custom GLSL volumetric dimensional
-    rift (`RiftEffect.js`), and single-pass `CompositeShader` + half-res
-    bloom (`Low`/`Medium`/`High` tiers).
--   **Audio & BeatSync:** Streams the user-provided soundtrack
-    `assets/Screen_Recording_20261118_044500_YouTube-mc.m4a` via
-    `AudioManager.js` + `BeatSync.js`, supports custom local file
-    uploads, and synthesizes a built-in Web Audio soundscape
-    (`ProceduralAudio.js`).
--   **Verification status:** All 25 JavaScript modules pass `node --check`
-    and serve HTTP `200` over a local HTTP server. Live Chrome DevTools
-    rendering, FPS/draw-call inspection, and desktop/mobile interaction
-    testing remain pending until tested in an active browser session.
+    speed void, floating rift shards + late-run cosmic warp rings,
+    standard + swaying anomaly obstacles, glowing slipstream ribbon, Act 5
+    peaceful living room props, pooled afterimages, pooled 3D lightning +
+    cat body charges, custom GLSL volumetric rift (`RiftEffect.js`),
+    stage announcement banners, and single-pass `CompositeShader` +
+    half-res bloom (`Low`/`Medium`/`High` tiers).
+-   **Audio & BeatSync:** Streams `assets/Screen_Recording_20261118_044500_YouTube-mc.m4a`
+    with drift-locked `getSyncedTrackTime()`, `AnalyserNode` beat
+    reactivity (`BeatSync.js`), custom file upload, and synthesized
+    foley (`ProceduralAudio.js`).
+-   **Verification status:** All 28 JavaScript modules pass `node --check`,
+    the live GitHub Pages deployment returns HTTP `200`, and `AutopilotAI`
+    plus `GameState` threshold checks pass under Node. Live Chrome
+    DevTools visual QA remains pending until run in an active debugged
+    browser session.
 
 Remaining production polish:
 

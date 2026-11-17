@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 const MAX_SHARDS = 110;
 const CRACK_COUNT = 24;
+const MAX_RINGS = 16;
 
 export class RiftWorld {
   constructor(scene) {
@@ -68,18 +69,45 @@ export class RiftWorld {
       });
     }
 
+    // Cosmic warp rings for late-run hyperstorm variety (75s+)
+    const ringGeom = new THREE.TorusGeometry(6.8, 0.08, 8, 36);
+    this.ringMat = new THREE.MeshBasicMaterial({
+      color: '#e879f9',
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    this.ringMesh = new THREE.InstancedMesh(ringGeom, this.ringMat, MAX_RINGS);
+    this.ringMesh.frustumCulled = false;
+    this.group.add(this.ringMesh);
+
+    this.rings = [];
+    for (let i = 0; i < MAX_RINGS; i++) {
+      this.rings.push({
+        z: -12 - i * 9.5,
+        rx: (Math.random() - 0.5) * 0.5,
+        ry: (Math.random() - 0.5) * 0.5,
+        rz: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 1.6,
+        scale: 0.85 + Math.random() * 0.65
+      });
+    }
+
     this.reset();
   }
 
   setQualityCount(count) {
     this.activeCount = Math.min(MAX_SHARDS, count);
     this.shardMesh.count = this.activeCount;
+    this.ringMesh.count = Math.min(MAX_RINGS, Math.max(6, Math.floor(count * 0.16)));
   }
 
   reset() {
     this.group.visible = false;
     this.shardMat.opacity = 0;
     this.crackMat.opacity = 0;
+    this.ringMesh.visible = false;
   }
 
   update(worldDt, state, beatEnergy = 0) {
@@ -145,5 +173,31 @@ export class RiftWorld {
 
     this.shardMesh.instanceMatrix.needsUpdate = true;
     this.crackMesh.instanceMatrix.needsUpdate = true;
+
+    // Late-run cosmic warp rings (75s+)
+    if (state.tearCount >= 4) {
+      this.ringMesh.visible = true;
+      this.ringMat.color.set(
+        state.stage2BurstActive ? '#ffbe3b' : state.tearCount >= 5 ? '#ff2a4b' : '#e879f9'
+      );
+      this.ringMat.opacity = 0.25 + beatEnergy * 0.3;
+
+      for (let i = 0; i < this.ringMesh.count; i++) {
+        const rg = this.rings[i];
+        rg.z += state.speed * 1.1 * worldDt;
+        if (rg.z > 14) {
+          rg.z -= MAX_RINGS * 9.5;
+        }
+        rg.rz += rg.spin * worldDt;
+        this.dummy.position.set(0, 2.6, rg.z);
+        this.dummy.rotation.set(rg.rx, rg.ry, rg.rz);
+        this.dummy.scale.setScalar(rg.scale);
+        this.dummy.updateMatrix();
+        this.ringMesh.setMatrixAt(i, this.dummy.matrix);
+      }
+      this.ringMesh.instanceMatrix.needsUpdate = true;
+    } else {
+      this.ringMesh.visible = false;
+    }
   }
 }

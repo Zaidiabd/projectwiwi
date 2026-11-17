@@ -36,7 +36,9 @@
         <div class="timer-row">
           <span>RUN <strong id="hud-timer">00:00.00</strong></span>
           <span class="sep">|</span>
-          <span>BEST <strong id="hud-best">0 m</strong></span>
+          <span>GOAL <strong id="hud-dist-goal">0 / 22,000 m</strong></span>
+          <span class="sep">|</span>
+          <span>BEST <strong id="hud-best">-- m</strong></span>
         </div>
       </div>
 
@@ -50,8 +52,14 @@
         <button id="btn-pause" class="hud-btn" type="button" title="Pause (Esc / P)">PAUSE</button>
       </div>
 
-      <!-- Temporary Left Seconds Counter for Audio & Gameplay Timing -->
-      <aside id="temp-sync-timer" class="temp-sync-timer" aria-label="Temporary Sync Timer">
+      <!-- Cinematic Stage Transition Banner -->
+      <div id="stage-banner" class="stage-banner hidden" aria-hidden="true">
+        <span id="stage-banner-kicker" class="banner-kicker">TEAR I</span>
+        <strong id="stage-banner-title" class="banner-title">SPACE-TIME FABRIC BREACHED</strong>
+      </div>
+
+      <!-- Debug-Only Left Seconds Sync Timer (?debug=1) -->
+      <aside id="temp-sync-timer" class="temp-sync-timer hidden" aria-label="Debug Sync Timer">
         <div class="sync-tag">SYNC TIMER (TEMP)</div>
         <div class="sync-main">
           <span id="hud-sync-sec">0.0</span><span class="sync-unit">s</span>

@@ -17,8 +17,15 @@ export class HUD {
     this.actName = document.getElementById('hud-act-name');
     this.progressFill = document.getElementById('hud-progress-fill');
     this.timerEl = document.getElementById('hud-timer');
+    this.distGoalEl = document.getElementById('hud-dist-goal');
     this.bestEl = document.getElementById('hud-best');
 
+    this.stageBannerEl = document.getElementById('stage-banner');
+    this.stageBannerKicker = document.getElementById('stage-banner-kicker');
+    this.stageBannerTitle = document.getElementById('stage-banner-title');
+    this.bannerTimer = 0;
+
+    this.tempSyncTimerEl = document.getElementById('temp-sync-timer');
     this.syncSecEl = document.getElementById('hud-sync-sec');
     this.audioSecEl = document.getElementById('hud-audio-sec');
     this.distPctEl = document.getElementById('hud-dist-pct');
@@ -48,6 +55,7 @@ export class HUD {
     this.debugEnabled = new URLSearchParams(window.location.search).get('debug') === '1';
     if (this.debugEnabled) {
       this.debugPanel.classList.remove('hidden');
+      this.tempSyncTimerEl.classList.remove('hidden');
     }
 
     this.fpsAccum = 0;
@@ -58,6 +66,19 @@ export class HUD {
 
   setVisible(visible) {
     this.root.classList.toggle('hidden', !visible);
+    if (!visible) {
+      this.stageBannerEl.classList.add('hidden');
+      this.bannerTimer = 0;
+    }
+  }
+
+  showBanner(kicker, title, accent = '#22e6ff', duration = 2.8) {
+    this.stageBannerKicker.textContent = kicker;
+    this.stageBannerKicker.style.color = accent;
+    this.stageBannerTitle.textContent = title;
+    this.stageBannerEl.style.borderColor = accent;
+    this.stageBannerEl.classList.remove('hidden');
+    this.bannerTimer = duration;
   }
 
   update(state, timeCtrl, renderer, quality, audioSeconds = null) {
@@ -67,12 +88,21 @@ export class HUD {
     this.progressFill.style.width = `${(state.progress * 100).toFixed(1)}%`;
 
     this.timerEl.textContent = formatTime(state.runElapsed);
-    this.bestEl.textContent = state.bestDistance ? `${Math.round(state.bestDistance)} m` : '-- m';
+    this.distGoalEl.textContent = `${Math.round(state.distance).toLocaleString()} / ${TARGET_CATCH_DISTANCE.toLocaleString()} m`;
+    this.bestEl.textContent = state.bestDistance ? `${Math.round(state.bestDistance).toLocaleString()} m` : '-- m';
 
-    // Temporary left sync timer (seconds)
-    this.syncSecEl.textContent = state.runElapsed.toFixed(1);
-    this.audioSecEl.textContent = audioSeconds !== null ? `${audioSeconds.toFixed(1)}s` : '--.-s';
-    this.distPctEl.textContent = `${Math.round(state.distance)} / ${TARGET_CATCH_DISTANCE} m`;
+    if (this.bannerTimer > 0) {
+      this.bannerTimer -= timeCtrl.realDt;
+      if (this.bannerTimer <= 0) {
+        this.stageBannerEl.classList.add('hidden');
+      }
+    }
+
+    if (this.debugEnabled) {
+      this.syncSecEl.textContent = state.runElapsed.toFixed(1);
+      this.audioSecEl.textContent = audioSeconds !== null ? `${audioSeconds.toFixed(1)}s` : '--.-s';
+      this.distPctEl.textContent = `${Math.round(state.distance)} / ${TARGET_CATCH_DISTANCE} m`;
+    }
 
     // Speedometer + recorded peak + gradual reddening + vibration
     this.speedEl.textContent = state.speed.toFixed(1);

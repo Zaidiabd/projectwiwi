@@ -133,6 +133,68 @@ export class Environment {
     this.peacefulLight.position.set(2.5, 7.5, 4);
     this.scene.add(this.peacefulLight);
 
+    // Slipstream guidance trail connecting the laser dot back toward Wiwi's lane
+    this.slipstreamPositions = new Float32Array(2 * 3);
+    const slipGeom = new THREE.BufferGeometry();
+    slipGeom.setAttribute('position', new THREE.BufferAttribute(this.slipstreamPositions, 3));
+    this.slipstreamMat = new THREE.LineBasicMaterial({
+      color: '#ff2a4b',
+      transparent: true,
+      opacity: 0.25,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    this.slipstreamLine = new THREE.Line(slipGeom, this.slipstreamMat);
+    this.slipstreamLine.frustumCulled = false;
+    this.scene.add(this.slipstreamLine);
+
+    // Act 5 ordinary living room props (hidden until final reveal)
+    this.roomGroup = new THREE.Group();
+    this.roomGroup.visible = false;
+    this.scene.add(this.roomGroup);
+
+    const rugGeom = new THREE.PlaneGeometry(5.8, 4.2);
+    rugGeom.rotateX(-Math.PI / 2);
+    const rugMat = new THREE.MeshStandardMaterial({ color: '#272c3a', roughness: 0.9 });
+    const rug = new THREE.Mesh(rugGeom, rugMat);
+    rug.position.set(0, 0.008, -1.0);
+    this.roomGroup.add(rug);
+
+    const wallMat = new THREE.MeshStandardMaterial({ color: '#1b202b', roughness: 0.85 });
+    const baseboard = new THREE.Mesh(new THREE.BoxGeometry(24, 0.28, 0.15), wallMat);
+    baseboard.position.set(0, 0.14, -5.2);
+    this.roomGroup.add(baseboard);
+
+    const sofa = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.35, 1.5), new THREE.MeshStandardMaterial({ color: '#222836', roughness: 0.85 }));
+    sofa.position.set(-1.6, 0.68, -4.1);
+    this.roomGroup.add(sofa);
+
+    // Warm standing floor lamp on right
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3.0, 8), new THREE.MeshStandardMaterial({ color: '#475569', metalness: 0.6 }));
+    pole.position.set(2.9, 1.5, -3.5);
+    this.roomGroup.add(pole);
+
+    const shade = new THREE.Mesh(
+      new THREE.ConeGeometry(0.48, 0.55, 16, 1, true),
+      new THREE.MeshBasicMaterial({ color: '#fde68a', side: THREE.DoubleSide })
+    );
+    shade.position.set(2.9, 3.0, -3.5);
+    this.roomGroup.add(shade);
+
+    // Subtle red laser-pointer beam descending onto the floor dot during Step 2
+    const beamGeom = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(2.8, 2.3, 1.8),
+      new THREE.Vector3(0, 0.03, -0.85)
+    ]);
+    this.pointerBeamMat = new THREE.LineBasicMaterial({
+      color: '#ff2a4b',
+      transparent: true,
+      opacity: 0.26,
+      blending: THREE.AdditiveBlending
+    });
+    this.pointerBeam = new THREE.Line(beamGeom, this.pointerBeamMat);
+    this.roomGroup.add(this.pointerBeam);
+
     this.floorScroll = 0;
     this.laserX = 0;
     this.laserZ = -7.5;
@@ -147,6 +209,8 @@ export class Environment {
     this.laserTime = 0;
     this.laserGroup.visible = true;
     this.laserGroup.position.set(0, 0, -7.2);
+    this.slipstreamLine.visible = true;
+    this.roomGroup.visible = false;
 
     this.scene.background.set('#05070d');
     this.scene.fog.color.set('#05070d');
@@ -178,6 +242,20 @@ export class Environment {
 
     this.laserGroup.visible = state.runElapsed < 214.0;
     this.laserGroup.position.set(this.laserX, 0, this.laserZ);
+
+    // Slipstream guidance ribbon connecting laser dot to Wiwi's track lane
+    this.slipstreamLine.visible = this.laserGroup.visible && state.phase === 'playing';
+    if (this.slipstreamLine.visible) {
+      this.slipstreamPositions[0] = this.laserX;
+      this.slipstreamPositions[1] = 0.03;
+      this.slipstreamPositions[2] = this.laserZ;
+      this.slipstreamPositions[3] = this.laserX;
+      this.slipstreamPositions[4] = 0.03;
+      this.slipstreamPositions[5] = 0.5;
+      this.slipstreamLine.geometry.attributes.position.needsUpdate = true;
+      this.slipstreamMat.opacity = 0.14 + state.slipstreamAlignment * 0.45;
+      this.slipstreamMat.color.set(state.slipstreamAlignment > 0.6 ? '#22e6ff' : '#ff2a4b');
+    }
 
     const pulse = 1.0 + Math.sin(this.laserTime * 6) * 0.14 + beatEnergy * 0.28;
     this.laserHalo.scale.setScalar(pulse);
@@ -248,12 +326,16 @@ export class Environment {
   }
 
   updateEnding(realDt, step) {
+    this.slipstreamLine.visible = false;
     if (step === 0) {
       this.laserGroup.visible = false;
+      this.roomGroup.visible = false;
       return;
     }
 
-    // Peaceful quiet room aesthetic
+    // Peaceful quiet living room aesthetic
+    this.roomGroup.visible = true;
+    this.pointerBeam.visible = step < 3;
     const smooth = 1 - Math.exp(-3.5 * realDt);
     this.floorMat.uniforms.uPeaceful.value += (1 - this.floorMat.uniforms.uPeaceful.value) * smooth;
     this.floorMat.uniforms.uGridStrength.value = 0;
@@ -265,9 +347,9 @@ export class Environment {
     this.peacefulLight.intensity += (28 - this.peacefulLight.intensity) * smooth;
     this.hemiLight.intensity += (1.15 - this.hemiLight.intensity) * smooth;
 
-    // Single red laser dot sits peacefully right under/in front of the cat
-    this.laserGroup.visible = step >= 2 && step < 3; // hidden during 'catch' once pinned under paws (drawn in sprite!)
-    this.laserGroup.position.set(0, 0, step === 2 ? -1.35 : -0.45);
+    // Single red laser dot sits peacefully right under/in front of the cats
+    this.laserGroup.visible = step >= 1 && step < 3;
+    this.laserGroup.position.set(0, 0, -0.85);
     this.laserHalo.scale.setScalar(0.85);
     this.laserLight.intensity = 1.4;
   }

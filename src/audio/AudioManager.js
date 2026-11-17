@@ -188,6 +188,24 @@ export class AudioManager {
     return Number.isFinite(this.audioEl.currentTime) ? this.audioEl.currentTime : null;
   }
 
+  /**
+   * Returns authoritative audio clock (seconds) for drift-free timeline sync
+   * when playing a full-length (>= 200s) soundtrack without looping.
+   */
+  getSyncedTrackTime() {
+    if (
+      !this.musicActive ||
+      this.silenceCut ||
+      this.audioEl.paused ||
+      this.audioEl.readyState < 2 ||
+      !Number.isFinite(this.audioEl.duration) ||
+      this.audioEl.duration < 200
+    ) {
+      return null;
+    }
+    return this.audioEl.currentTime;
+  }
+
   update(dt, state) {
     this.fallbackTime += dt * (1.8 + state.normalizedSpeed * 1.8);
     const fallbackPulse = state.phase === 'playing' ? 0.25 + 0.25 * Math.sin(this.fallbackTime * Math.PI) : 0;

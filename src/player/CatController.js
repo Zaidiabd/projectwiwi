@@ -462,4 +462,16 @@ export class CatController {
   getCurrentUVRect() {
     return this.animator.getCurrentUVRect();
   }
+
+  applyAtlas(texture, manifest) {
+    this.atlasTexture = texture;
+    this.manifest = manifest;
+    this.animator = new CatAnimator(manifest);
+    this.spriteMaterial.uniforms.uMap.value = texture;
+    this.spriteMaterial.uniforms.uTexelSize.value.set(
+      1 / manifest.atlasWidth,
+      1 / manifest.atlasHeight
+    );
+    this.syncSpriteUV();
+  }
 }

@@ -381,7 +381,18 @@ export class Game {
     const beatEnergy = this.audio.update(realDt, this.state);
 
     if (this.state.phase === 'playing') {
-      this.state.runElapsed += realDt;
+      // Lock runElapsed tightly to audio clock when full-length track is actively playing
+      const audioClock = this.audio.getSyncedTrackTime();
+      if (audioClock !== null && audioClock > 0.2 && audioClock < 216.5) {
+        const drift = audioClock - this.state.runElapsed;
+        if (Math.abs(drift) > 0.25) {
+          this.state.runElapsed = audioClock;
+        } else {
+          this.state.runElapsed += realDt + drift * Math.min(1, realDt * 4.0);
+        }
+      } else {
+        this.state.runElapsed += realDt;
+      }
 
       // Temporal burst & overclock time-domain scaling
       if (this.state.burstActive) {
@@ -448,10 +459,12 @@ export class Game {
           this.overclockSlowmoTimer = 2.8;
           this.flashValue = 0.26;
           this.audio.playTemporalBurst();
+          this.hud.showBanner('STAGE III // 26s', 'OVERCLOCK SLOW-MO • TEMPORAL BURST UNLOCKED', '#22e6ff', 3.0);
         } else if (events.enteredBurst2) {
           // 136s-142s: Distinct Stage 2 Temporal Burst
           this.flashValue = 0.55;
           this.audio.playTemporalBurst();
+          this.hud.showBanner('BURST II // 136s', 'STAGE II TEMPORAL BURST ENGAGED', '#ffbe3b', 3.2);
         } else if (events.enteredEnding) {
           // 216s: Final leap into the Laser Reveal
           this.beginEnding();
@@ -463,9 +476,19 @@ export class Game {
         this.flashValue = Math.min(0.85, 0.42 + this.state.tearCount * 0.08);
         this.overclockSlowmoTimer = 0.65;
         this.audio.playPhaseShimmer();
-        if (this.state.tearCount === 5) {
+
+        if (this.state.tearCount === 1) {
+          this.hud.showBanner('TEAR I // 38s', 'SPACE-TIME BREACH • BODY CHARGE ACTIVE', '#a855f7', 2.8);
+        } else if (this.state.tearCount === 2) {
+          this.hud.showBanner('TEAR II // 50s', 'DIMENSIONAL SURGE INTENSIFYING', '#c084fc', 2.6);
+        } else if (this.state.tearCount === 3) {
+          this.hud.showBanner('TEAR III // 62s', 'WEIRD SPACE TEAR ANOMALY DETECTED', '#2dd4bf', 3.0);
+        } else if (this.state.tearCount === 4) {
+          this.hud.showBanner('TEAR IV // 75s', 'HYPERSTORM RUPTURE • MAXIMUM ESCALATION', '#e879f9', 3.0);
+        } else if (this.state.tearCount === 5) {
           // Lily bursts into the chase at TEAR V (142s)!
           this.audio.playAnnoyedPop();
+          this.hud.showBanner('TEAR V // 142s', 'LILY JOINED THE CHASE! REACH 22,000 m!', '#ff2a4b', 3.6);
         }
       }
 

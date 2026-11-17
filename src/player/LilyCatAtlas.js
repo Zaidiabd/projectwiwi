@@ -79,13 +79,22 @@ function drawLongLimb(ctx, x1, y1, cx, cy, x2, y2, width = 11) {
   ctx.quadraticCurveTo(cx, cy, x2, y2);
   ctx.stroke();
 
-  // White tuxedo mitten paw
+  // White tuxedo mitten paw with delicate toe-line creases
   ctx.fillStyle = PALETTE.white;
   ctx.strokeStyle = PALETTE.ink;
   ctx.lineWidth = 2.2;
   ctx.beginPath();
   ctx.ellipse(x2, y2, 8.2, 5.8, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.moveTo(x2 - 2.6, y2 + 0.8);
+  ctx.lineTo(x2 - 2.2, y2 + 4.8);
+  ctx.moveTo(x2 + 2.6, y2 + 0.8);
+  ctx.lineTo(x2 + 2.2, y2 + 4.8);
   ctx.stroke();
   ctx.restore();
 }
@@ -163,8 +172,21 @@ function drawLilyHead(ctx, hx, hy, opts = {}) {
   ctx.arc(0, -4, 19.5, Math.PI * 1.15, Math.PI * 1.85);
   ctx.stroke();
 
-  // Expressive emerald eyes
+  // Expressive emerald eyes + delicate white whiskers
   const eyeOffset = facing === 'left' ? -3 : 0;
+  if (facing === 'front') {
+    ctx.strokeStyle = 'rgba(241, 245, 249, 0.78)';
+    ctx.lineWidth = 1.25;
+    for (const dir of [-1, 1]) {
+      for (const wy of [4.5, 7.0, 9.5]) {
+        ctx.beginPath();
+        ctx.moveTo(dir * 9, wy);
+        ctx.quadraticCurveTo(dir * 19, wy - 1.2, dir * 27, wy + (wy - 7) * 0.45);
+        ctx.stroke();
+      }
+    }
+  }
+
   for (const dir of [-1, 1]) {
     const ex = dir * 9 + eyeOffset;
     const ey = -3;
@@ -183,7 +205,11 @@ function drawLilyHead(ctx, hx, hy, opts = {}) {
       ctx.stroke();
     } else if (expression === 'shocked') {
       // Giant round startled eyes with tiny pinprick pupils!
-      ctx.fillStyle = PALETTE.eye;
+      const irisGrad = ctx.createRadialGradient(ex - 1, ey - 1, 0.5, ex, ey, 6.2);
+      irisGrad.addColorStop(0, '#a7f3d0');
+      irisGrad.addColorStop(0.6, PALETTE.eye);
+      irisGrad.addColorStop(1, '#047857');
+      ctx.fillStyle = irisGrad;
       ctx.strokeStyle = PALETTE.ink;
       ctx.lineWidth = 1.8;
       ctx.beginPath();
@@ -195,7 +221,11 @@ function drawLilyHead(ctx, hx, hy, opts = {}) {
       ctx.arc(ex, ey, 1.5, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      ctx.fillStyle = PALETTE.eye;
+      const irisGrad = ctx.createRadialGradient(ex - 1.2, ey - 1.2, 0.5, ex, ey, 5.0);
+      irisGrad.addColorStop(0, '#a7f3d0');
+      irisGrad.addColorStop(0.6, PALETTE.eye);
+      irisGrad.addColorStop(1, '#047857');
+      ctx.fillStyle = irisGrad;
       ctx.strokeStyle = PALETTE.ink;
       ctx.lineWidth = 1.6;
       ctx.beginPath();

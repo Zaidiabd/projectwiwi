@@ -27,8 +27,8 @@ An interactive 2.5D browser speed-running experience built with Three.js (WebGL 
 - `62s`: Third space-time tear; **Space Tear Anomaly** environment shift & swaying anomaly monolith obstacles.
 - `75s`: Fourth space-time tear; hyperstorm escalation.
 - `136s – 142s`: **Stage II Temporal Burst** (golden-crimson time-dilation overdrive) leading into Tear V (`142s`).
-- `142s – 216s`: **TEAR V** — Big long-haired black-and-white cat **Lily** joins the chase alongside Wiwi (triggering Wiwi's pulsing `💢` anger symbol) in a race to clear the `14,000 m` threshold.
-- `216s`: Both cats leap through the final rift into abrupt silence; if `distance >= 14,000 m`, Wiwi catches the laser while Lily is shocked (`UNIVERSE DESTROYED. LASER ACQUIRED.`); otherwise Lily steals it while Wiwi belly-flops (`UNIVERSE DESTROYED. LILY STOLE THE LASER.`).
+- `142s – 216s`: **TEAR V** — Big long-haired black-and-white cat **Lily** joins the chase alongside Wiwi (triggering Wiwi's pulsing `💢` anger symbol) in a race to clear the `22,000 m` threshold.
+- `216s`: Both cats leap through the final rift into abrupt silence inside a quiet living room; if `distance >= 22,000 m`, Wiwi catches the laser while Lily is shocked (`UNIVERSE DESTROYED. LASER ACQUIRED.`); otherwise Lily steals it while Wiwi belly-flops (`UNIVERSE DESTROYED. LILY STOLE THE LASER.`).
 
 ## Running Locally
 

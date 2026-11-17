@@ -1,7 +1,7 @@
 const BEST_DIST_KEY = 'project_wiwi_best_dist_v1';
 
 export const RUN_DURATION_SECONDS = 216.0;
-export const TARGET_CATCH_DISTANCE = 14000;
+export const TARGET_CATCH_DISTANCE = 22000;
 
 export const TIMELINE = {
   act2Start: 10.0,

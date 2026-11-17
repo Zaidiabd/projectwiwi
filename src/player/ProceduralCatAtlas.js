@@ -39,6 +39,14 @@ const PALETTE = {
   nose: '#475569'
 };
 
+function makePlushGrad(ctx, cx, cy, r) {
+  const g = ctx.createRadialGradient(cx - r * 0.28, cy - r * 0.35, r * 0.1, cx, cy, r * 1.15);
+  g.addColorStop(0, '#8898af');
+  g.addColorStop(0.55, PALETTE.fur);
+  g.addColorStop(1, PALETTE.furShade);
+  return g;
+}
+
 function drawPaw(ctx, x, y, r = 6.2, angle = 0) {
   ctx.save();
   ctx.translate(x, y);
@@ -49,6 +57,16 @@ function drawPaw(ctx, x, y, r = 6.2, angle = 0) {
   ctx.beginPath();
   ctx.ellipse(0, 0, r * 1.15, r * 0.78, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
+
+  // Delicate toe-line creases
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.32, r * 0.12);
+  ctx.lineTo(-r * 0.25, r * 0.65);
+  ctx.moveTo(r * 0.32, r * 0.12);
+  ctx.lineTo(r * 0.25, r * 0.65);
   ctx.stroke();
   ctx.restore();
 }
@@ -185,8 +203,8 @@ function drawBritishHead(ctx, hx, hy, opts = {}) {
     ctx.fill();
   }
 
-  // Iconic round chubby British Shorthair head
-  ctx.fillStyle = PALETTE.fur;
+  // Iconic round chubby British Shorthair head with plush radial shading
+  ctx.fillStyle = makePlushGrad(ctx, 0, -3, 22);
   ctx.strokeStyle = PALETTE.ink;
   ctx.lineWidth = 2.8;
   ctx.beginPath();
@@ -195,24 +213,33 @@ function drawBritishHead(ctx, hx, hy, opts = {}) {
   ctx.stroke();
 
   if (yaw === 'front') {
-    // Subtle chubby cheek puff shading on front view
+    // Subtle chubby cheek puff shading & plush tuft strokes
     ctx.fillStyle = PALETTE.furShade;
     ctx.beginPath();
     ctx.ellipse(-10, 4, 6.5, 4.5, 0, 0, Math.PI * 2);
     ctx.ellipse(10, 4, 6.5, 4.5, 0, 0, Math.PI * 2);
     ctx.fill();
   } else {
-    // Clean back-of-head nape shadow arc (no face features from behind!)
+    // Clean back-of-head nape shadow arc + subtle plush fur strokes (no face features from behind!)
     ctx.strokeStyle = PALETTE.furShade;
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.arc(0, -2, 16.2, Math.PI * 0.18, Math.PI * 0.82);
     ctx.stroke();
 
+    // Soft crown fur tuft wisps
+    ctx.strokeStyle = PALETTE.rim;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-4, -17);
+    ctx.quadraticCurveTo(-2, -21, 0, -18);
+    ctx.quadraticCurveTo(2, -21, 4, -17);
+    ctx.stroke();
+
     // On a sharp 3/4 turn, show only the chubby cheek silhouette curve on the turning side
     if (Math.abs(yaw) > 0.35) {
       const side = Math.sign(yaw);
-      ctx.fillStyle = PALETTE.fur;
+      ctx.fillStyle = makePlushGrad(ctx, side * 15, 2, 8);
       ctx.strokeStyle = PALETTE.ink;
       ctx.lineWidth = 2.2;
       ctx.beginPath();
@@ -229,7 +256,7 @@ function drawBritishHead(ctx, hx, hy, opts = {}) {
   ctx.arc(0, -4, 18.5, Math.PI * 1.15, Math.PI * 1.85);
   ctx.stroke();
 
-  // Big round golden-copper British Shorthair eyes ONLY in front view (Act 5 sit / catch)
+  // Big round golden-copper British Shorthair eyes + delicate whiskers ONLY in front view
   if (yaw === 'front') {
     const eyeY = -2.5 + lookDown * 3.8;
     // Soft pale muzzle pads
@@ -239,8 +266,29 @@ function drawBritishHead(ctx, hx, hy, opts = {}) {
     ctx.ellipse(4.2, 4.5 + lookDown * 2, 4.8, 3.4, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    // Delicate curved whiskers (3 per side)
+    ctx.strokeStyle = 'rgba(226, 232, 240, 0.72)';
+    ctx.lineWidth = 1.15;
     for (const dir of [-1, 1]) {
-      ctx.fillStyle = PALETTE.eye;
+      for (const wy of [2.5, 5.0, 7.5]) {
+        ctx.beginPath();
+        ctx.moveTo(dir * 7, wy + lookDown * 2);
+        ctx.quadraticCurveTo(dir * 16, wy - 1 + lookDown * 2, dir * 23, wy + (wy - 5) * 0.45 + lookDown * 2);
+        ctx.stroke();
+      }
+    }
+
+    for (const dir of [-1, 1]) {
+      // Multi-stop gleaming golden-copper iris gradient
+      const irisGrad = ctx.createRadialGradient(
+        dir * 7.8 - 1.2, eyeY - 1.4, 0.6,
+        dir * 7.8, eyeY, 4.9
+      );
+      irisGrad.addColorStop(0, '#fde68a');
+      irisGrad.addColorStop(0.55, PALETTE.eye);
+      irisGrad.addColorStop(1, '#b45309');
+
+      ctx.fillStyle = irisGrad;
       ctx.strokeStyle = PALETTE.ink;
       ctx.lineWidth = 1.6;
       ctx.beginPath();
@@ -255,7 +303,10 @@ function drawBritishHead(ctx, hx, hy, opts = {}) {
 
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(dir * 7.8 - 1.4, eyeY - 1.5, 1.2, 0, Math.PI * 2);
+      ctx.arc(dir * 7.8 - 1.5, eyeY - 1.6, 1.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(dir * 7.8 + 1.3, eyeY + 1.3, 0.6, 0, Math.PI * 2);
       ctx.fill();
 
       if (angry) {
@@ -397,7 +448,7 @@ function drawRearOrAngledFrame(ctx, cx, groundY, clipName, phase, t) {
   ctx.save();
   ctx.translate(cx, bodyY);
   ctx.rotate(yaw * 0.2);
-  ctx.fillStyle = PALETTE.fur;
+  ctx.fillStyle = makePlushGrad(ctx, 0, 0, bodyRx);
   ctx.strokeStyle = PALETTE.ink;
   ctx.lineWidth = 2.8;
   ctx.beginPath();
@@ -480,7 +531,7 @@ function drawEndingFrame(ctx, cx, groundY, clipName, phase, t) {
 
     // Flat splatted plush torso on floor
     ctx.save();
-    ctx.fillStyle = PALETTE.fur;
+    ctx.fillStyle = makePlushGrad(ctx, cx, groundY - 13, 30);
     ctx.strokeStyle = PALETTE.ink;
     ctx.lineWidth = 2.8;
     ctx.beginPath();
@@ -519,7 +570,7 @@ function drawEndingFrame(ctx, cx, groundY, clipName, phase, t) {
 
   // Plump seated Munchkin torso
   ctx.save();
-  ctx.fillStyle = PALETTE.fur;
+  ctx.fillStyle = makePlushGrad(ctx, cx, groundY - 22 + pounce * 3, 23);
   ctx.strokeStyle = PALETTE.ink;
   ctx.lineWidth = 2.8;
   ctx.beginPath();
