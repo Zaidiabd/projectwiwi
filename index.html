@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>PROJECT WIWI — The Last Light</title>
+  <meta name="description" content="Interactive 2.5D browser speed-running experience: chase the laser dot beyond reality." />
+  <link rel="stylesheet" href="./styles/main.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game-canvas" aria-label="Project WIWI 3D Viewport"></canvas>
+
+    <!-- Restrained Experimental Speed-Testing HUD -->
+    <header id="hud" class="hud hidden" aria-live="polite">
+      <div class="hud-top-left">
+        <div class="brand-tag">
+          <span class="pulse-dot"></span>
+          <span>PROJECT WIWI // EXP-05</span>
+        </div>
+        <div class="act-readout">
+          <span id="hud-act-code" class="act-code">STAGE I</span>
+          <span id="hud-act-name" class="act-name">THE CHASE</span>
+        </div>
+        <div class="progress-track" title="Timeline progress">
+          <div id="hud-progress-fill" class="progress-fill"></div>
+        </div>
+        <div class="timer-row">
+          <span>RUN <strong id="hud-timer">00:00.00</strong></span>
+          <span class="sep">|</span>
+          <span>BEST <strong id="hud-best">0 m</strong></span>
+        </div>
+      </div>
+
+      <div class="hud-top-right">
+        <button id="btn-ai-toggle" class="hud-btn" type="button" title="Toggle AI Playthrough (I)">AI: OFF</button>
+        <label class="hud-btn file-btn" title="Load local audio track">
+          <input id="hud-audio-input" type="file" accept="audio/*,video/*" hidden />
+          <span>AUDIO</span>
+        </label>
+        <button id="btn-mute" class="hud-btn" type="button" title="Toggle mute (M)">SFX ON</button>
+        <button id="btn-pause" class="hud-btn" type="button" title="Pause (Esc / P)">PAUSE</button>
+      </div>
+
+      <!-- Temporary Left Seconds Counter for Audio & Gameplay Timing -->
+      <aside id="temp-sync-timer" class="temp-sync-timer" aria-label="Temporary Sync Timer">
+        <div class="sync-tag">SYNC TIMER (TEMP)</div>
+        <div class="sync-main">
+          <span id="hud-sync-sec">0.0</span><span class="sync-unit">s</span>
+        </div>
+        <div class="sync-sub">AUDIO: <strong id="hud-audio-sec">0.0s</strong></div>
+        <div class="sync-sub">DIST: <strong id="hud-dist-pct">0.0%</strong></div>
+      </aside>
+
+      <!-- Bottom Telemetry -->
+      <div class="hud-bottom-center">
+        <div id="speedometer-card" class="telemetry-panel">
+          <div class="speed-block">
+            <div class="speed-head-row">
+              <span class="telemetry-label">SPEEDOMETER</span>
+              <span class="peak-badge">MAX <strong id="hud-peak-speed">0.0</strong></span>
+            </div>
+            <div class="speed-value-wrap">
+              <span id="hud-speed" class="speed-value">0.0</span>
+              <span id="hud-speed-unit" class="speed-unit">m/s</span>
+            </div>
+            <div class="speed-redline-track">
+              <div id="hud-speed-bar" class="speed-redline-fill"></div>
+            </div>
+          </div>
+
+          <div class="meters-block">
+            <div class="meter-row">
+              <div class="meter-head">
+                <span>BOOST</span>
+                <span id="hud-boost-pct">100%</span>
+              </div>
+              <div class="meter-bar">
+                <div id="hud-boost-fill" class="meter-fill boost-fill"></div>
+              </div>
+            </div>
+            <div class="meter-row">
+              <div class="meter-head">
+                <span id="hud-shear-label">REALITY INTEGRITY</span>
+                <span id="hud-shear-pct">100%</span>
+              </div>
+              <div class="meter-bar">
+                <div id="hud-shear-fill" class="meter-fill shear-fill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="hud-prompt" class="control-prompt">
+          HOLD <strong>W / ↑</strong> TO CHASE &nbsp;•&nbsp; <strong>A / D</strong> STEER &nbsp;•&nbsp; <strong>SHIFT</strong> BOOST &nbsp;•&nbsp; <strong>SPACE</strong> TEMPORAL BURST
+        </div>
+      </div>
+
+      <!-- Optional ?debug=1 Telemetry Overlay -->
+      <aside id="debug-panel" class="debug-panel hidden">
+        <div>FPS: <strong id="dbg-fps">0</strong> (<span id="dbg-ms">0.0</span> ms)</div>
+        <div>DRAW CALLS: <strong id="dbg-calls">0</strong></div>
+        <div>TRIANGLES: <strong id="dbg-tris">0</strong></div>
+        <div>DPR: <strong id="dbg-dpr">1.0</strong> | TIER: <strong id="dbg-tier">MEDIUM</strong></div>
+        <div>TIME: P=<span id="dbg-ptime">1.00</span> W=<span id="dbg-wtime">1.00</span></div>
+      </aside>
+    </header>
+
+    <!-- Mobile Touch Controls -->
+    <div id="touch-controls" class="touch-controls hidden">
+      <div class="touch-group-left">
+        <button id="touch-left" class="touch-pad" type="button" aria-label="Steer Left">◀</button>
+        <button id="touch-right" class="touch-pad" type="button" aria-label="Steer Right">▶</button>
+      </div>
+      <div class="touch-group-right">
+        <button id="touch-burst" class="touch-action-btn burst-btn" type="button">BURST</button>
+        <button id="touch-boost" class="touch-action-btn boost-btn" type="button">BOOST</button>
+      </div>
+    </div>
+
+    <!-- Start Screen Overlay -->
+    <section id="screen-start" class="overlay-screen">
+      <div class="overlay-card">
+        <div class="card-kicker">PROJECT WIWI // INTERACTIVE 2.5D EXPERIMENT</div>
+        <h1 class="title">THE LAST LIGHT</h1>
+        <p class="subtitle">
+          Target: an anomalous red point-source.<br />
+          Side effect: localized spacetime collapse.
+        </p>
+
+        <div class="controls-grid">
+          <div class="ctrl-item"><kbd>W</kbd> / <kbd>↑</kbd><span>Accelerate</span></div>
+          <div class="ctrl-item"><kbd>A</kbd> / <kbd>D</kbd><span>Steer &amp; Track Slipstream</span></div>
+          <div class="ctrl-item"><kbd>SHIFT</kbd><span>Overdrive Boost</span></div>
+          <div class="ctrl-item"><kbd>SPACE</kbd><span>Temporal Burst (Slow World)</span></div>
+        </div>
+
+        <div class="setup-row">
+          <div class="setup-field">
+            <span class="field-label">QUALITY</span>
+            <div class="segmented" id="start-quality-group">
+              <button type="button" data-quality="low">LOW</button>
+              <button type="button" data-quality="medium" class="active">MED</button>
+              <button type="button" data-quality="high">HIGH</button>
+            </div>
+          </div>
+
+          <div class="setup-field">
+            <span class="field-label">SOUNDTRACK</span>
+            <label class="upload-pill">
+              <input id="start-audio-input" type="file" accept="audio/*,video/*" hidden />
+              <span id="start-audio-name">DEFAULT TRACK READY</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button id="btn-start" class="primary-btn" type="button">INITIATE RUN</button>
+          <button id="btn-start-ai" class="secondary-btn ai-btn" type="button">AI PLAYTHROUGH</button>
+        </div>
+        <p class="footnote">
+          Audio starts on interaction. Synthesized telemetry foley stays active if muted or offline.
+        </p>
+      </div>
+    </section>
+
+    <!-- Pause Overlay -->
+    <section id="screen-pause" class="overlay-screen hidden">
+      <div class="overlay-card compact">
+        <div class="card-kicker">SIMULATION SUSPENDED</div>
+        <h2 class="modal-title">PAUSED</h2>
+
+        <div class="setup-row">
+          <div class="setup-field">
+            <span class="field-label">QUALITY</span>
+            <div class="segmented" id="pause-quality-group">
+              <button type="button" data-quality="low">LOW</button>
+              <button type="button" data-quality="medium" class="active">MED</button>
+              <button type="button" data-quality="high">HIGH</button>
+            </div>
+          </div>
+          <div class="setup-field">
+            <span class="field-label">VOLUME</span>
+            <input id="pause-volume" type="range" min="0" max="1" step="0.05" value="0.8" />
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button id="btn-resume" class="primary-btn" type="button">RESUME</button>
+          <button id="btn-pause-restart" class="secondary-btn" type="button">RESTART</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Act 5 Comedic End Card -->
+    <section id="screen-end" class="overlay-screen ending hidden">
+      <div class="overlay-card ending-card">
+        <div class="end-dot"></div>
+        <div class="card-kicker">EXPERIMENT CONCLUDED</div>
+        <h2 id="end-headline" class="end-headline">UNIVERSE DESTROYED.<br />LASER ACQUIRED.</h2>
+        <p id="end-outcome-note" class="subtitle"></p>
+        <div class="end-stats">
+          <div class="end-stat">
+            <span>DISTANCE</span>
+            <strong id="end-time">0 m</strong>
+          </div>
+          <div class="end-stat">
+            <span>PEAK VELOCITY</span>
+            <strong id="end-peak-speed">0.0 m/s</strong>
+          </div>
+          <div class="end-stat">
+            <span>BEST DISTANCE</span>
+            <strong id="end-best-time">0 m</strong>
+          </div>
+        </div>
+        <div id="end-new-best" class="new-best-badge hidden">NEW PERSONAL RECORD</div>
+        <div id="end-splits" class="splits-list"></div>
+        <div class="actions-row">
+          <button id="btn-restart" class="primary-btn" type="button">CHASE AGAIN</button>
+          <button id="btn-restart-ai" class="secondary-btn ai-btn" type="button">AI PLAYTHROUGH</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
