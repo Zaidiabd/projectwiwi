@@ -1,5 +1,7 @@
 # PROJECT WIWI — The Last Light
 
+**Play online (GitHub Pages):** https://zaidiabd.github.io/projectwiwi/
+
 An interactive 2.5D browser speed-running experience built with Three.js (WebGL 2), featuring a 2D illustrated **gray British Shorthair Munchkin** cat chasing a red laser dot across a 216-second audio-synced sequence until reality fractures.
 
 ## Controls
