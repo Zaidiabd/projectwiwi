@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildProceduralCatAtlas } from './ProceduralCatAtlas.js';
 import { CatAnimator } from './CatAnimator.js';
+import { LANES } from '../core/GameState.js';
 
 const CAT_VERTEX_SHADER = /* glsl */ `
   varying vec2 vUv;
@@ -22,6 +23,8 @@ const CAT_FRAGMENT_SHADER = /* glsl */ `
   uniform vec3 uLaserTint;
   uniform float uOpacity;
   uniform float uOverdrive;
+  uniform float uOverclockStrobe;
+  uniform float uTime;
   uniform vec2 uTexelSize;
 
   varying vec2 vUv;
@@ -37,7 +40,13 @@ const CAT_FRAGMENT_SHADER = /* glsl */ `
     float edge = clamp((1.0 - aUp) * 0.65 + (1.0 - min(aL, aR)) * 0.45, 0.0, 1.0);
 
     vec3 color = tex.rgb;
-    if (uOverdrive > 0.01) {
+    if (uOverclockStrobe > 0.5) {
+      // Stage 3 Overclock: alternate sharply between Pitch-Black & Blazing Neon body!
+      float strobe = step(0.0, sin(uTime * 72.0));
+      vec3 neonBody = mix(vec3(0.08, 0.92, 1.0), vec3(1.0, 0.16, 0.52), edge);
+      vec3 blackBody = vec3(0.02, 0.02, 0.04) + neonBody * edge * 1.45;
+      color = mix(blackBody, neonBody * (0.85 + edge * 0.65), strobe);
+    } else if (uOverdrive > 0.01) {
       // Preserve natural gray fur while charging coat edges & highlights with crimson/cyan plasma luminescence
       float luma = dot(color, vec3(0.299, 0.587, 0.114));
       float highlightMask = smoothstep(0.22, 0.72, luma);
@@ -172,6 +181,8 @@ export class CatController {
         uLaserTint: { value: new THREE.Color('#ff2a4b') },
         uOpacity: { value: 1.0 },
         uOverdrive: { value: 0.0 },
+        uOverclockStrobe: { value: 0.0 },
+        uTime: { value: 0.0 },
         uTexelSize: { value: new THREE.Vector2(1 / manifest.atlasWidth, 1 / manifest.atlasHeight) }
       },
       vertexShader: CAT_VERTEX_SHADER,
@@ -234,7 +245,11 @@ export class CatController {
   }
 
   reset() {
-    this.x = 0;
+    this.laneIndex = 1; // Center lane (0.0) out of 3 lanes [-3, 0, +3]
+    this.prevLeft = false;
+    this.prevRight = false;
+    this.laneRepeatTimer = 0;
+    this.x = LANES[1];
     this.y = 0;
     this.vx = 0;
     this.vy = 0;
@@ -253,6 +268,7 @@ export class CatController {
     this.angerMesh.visible = false;
     this.auraMesh.visible = false;
     this.spriteMaterial.uniforms.uOverdrive.value = 0.0;
+    this.spriteMaterial.uniforms.uOverclockStrobe.value = 0.0;
 
     this.animator.play('idle', { restart: true });
     this.syncSpriteUV();
@@ -281,14 +297,22 @@ export class CatController {
     }
 
     update(playerDt, input, state, laserX, worldScale) {
-      // 1. Speed & boost simulation escalating through each tear stage + Dual Overdrive (179s+)
+      // 1. Speed & boost simulation: Stage 1 normal run -> Stage 2 accelerate & boost -> Stage 3 Overclock!
       const tearEscalation = state.tearCount * 12;
       const stage2Bonus = state.stage2BurstActive ? 22 : 0;
       const overdriveClimb = state.overdriveMode ? Math.max(0, state.runElapsed - 179.0) * 1.15 : 0;
       const overdriveBonus = state.overdriveMode ? 22 + overdriveClimb : 0;
-      const baseMaxSpeed = 28 + state.actIndex * 8 + tearEscalation + stage2Bonus + overdriveBonus;
-      const boostMaxSpeed = 48 + state.actIndex * 10 + tearEscalation * 1.2 + stage2Bonus * 1.15 + overdriveBonus * 1.25;
-      const wantsBoost = input.boost && state.boostEnergy > 0.04;
+      const baseMaxSpeed =
+        state.actIndex === 0
+          ? 22
+          : state.actIndex === 1
+            ? 38
+            : 28 + state.actIndex * 8 + tearEscalation + stage2Bonus + overdriveBonus;
+      const boostMaxSpeed =
+        state.actIndex === 1
+          ? 58
+          : 48 + state.actIndex * 10 + tearEscalation * 1.2 + stage2Bonus * 1.15 + overdriveBonus * 1.25;
+      const wantsBoost = state.boostUnlocked && input.boost && state.boostEnergy > 0.04;
       state.isBoosting = wantsBoost && (input.forward || this.speed > 4);
 
       if (state.isBoosting) {
@@ -316,22 +340,44 @@ export class CatController {
         this.speed = Math.max(0, this.speed - 15 * playerDt);
       }
 
-      // Temporal burst speed surge (Stage 1 or Stage 2)
-      if (state.burstActive || state.stage2BurstActive) {
-        this.speed = Math.max(this.speed, baseMaxSpeed + (state.stage2BurstActive ? 24 : 15));
+      // Automatic Stage 3 Overclock speed push or manual Temporal Burst surge
+      if (state.overclock1Active || state.burstActive || state.stage2BurstActive) {
+        this.speed = Math.max(this.speed, baseMaxSpeed + (state.stage2BurstActive ? 24 : 16));
       }
 
       state.speed = this.speed;
       state.peakSpeed = Math.max(state.peakSpeed, this.speed);
       state.normalizedSpeed = Math.min(1, this.speed / 185);
 
-      // 2. Lateral steering (snappy, controlled at high speeds, no awkward sideways slide)
-      const steerInput = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-      const speedDamping = 1 / (1 + state.normalizedSpeed * 0.42);
-      const maxLatVel = 13.0 * speedDamping;
-      const targetVx = steerInput * maxLatVel;
-      this.vx += (targetVx - this.vx) * (1 - Math.exp(-14 * playerDt));
-      this.x = THREE.MathUtils.clamp(this.x + this.vx * playerDt, -5.2, 5.2);
+      // 2. Discrete 3-lane navigation (Left = -3.0, Center = 0.0, Right = +3.0)
+      if (typeof input.targetLane === 'number') {
+        this.laneIndex = THREE.MathUtils.clamp(input.targetLane, 0, 2);
+      } else {
+        const leftPressed = Boolean(input.left);
+        const rightPressed = Boolean(input.right);
+        if (leftPressed && !this.prevLeft) {
+          this.laneIndex = Math.max(0, this.laneIndex - 1);
+          this.laneRepeatTimer = 0.22;
+        } else if (rightPressed && !this.prevRight) {
+          this.laneIndex = Math.min(2, this.laneIndex + 1);
+          this.laneRepeatTimer = 0.22;
+        } else if (leftPressed !== rightPressed) {
+          this.laneRepeatTimer -= playerDt;
+          if (this.laneRepeatTimer <= 0) {
+            this.laneIndex = THREE.MathUtils.clamp(this.laneIndex + (rightPressed ? 1 : -1), 0, 2);
+            this.laneRepeatTimer = 0.16;
+          }
+        }
+        this.prevLeft = leftPressed;
+        this.prevRight = rightPressed;
+      }
+
+      const targetX = LANES[this.laneIndex];
+      const latErr = targetX - this.x;
+      const steerInput = Math.abs(latErr) > 0.18 ? Math.sign(latErr) : 0;
+      const prevX = this.x;
+      this.x += latErr * (1 - Math.exp(-18 * playerDt));
+      this.vx = playerDt > 0.0001 ? (this.x - prevX) / playerDt : 0;
 
       // Laser slipstream alignment
       const distToLaser = Math.abs(this.x - laserX);
@@ -412,7 +458,9 @@ export class CatController {
       this.shadowMesh.scale.setScalar(hFactor);
       this.shadowMat.opacity = 0.68 * hFactor;
 
-      // Clean Overdrive plasma rim & soft back-aura (179s+)
+      // Stage 3 Overclock flashing black/neon shader strobe & Dual Overdrive plasma transformation
+      this.spriteMaterial.uniforms.uTime.value = state.runElapsed;
+      this.spriteMaterial.uniforms.uOverclockStrobe.value = state.overclock1Active ? 1.0 : 0.0;
       const targetOverdrive = state.overdriveMode ? 1.0 : 0.0;
       this.spriteMaterial.uniforms.uOverdrive.value +=
         (targetOverdrive - this.spriteMaterial.uniforms.uOverdrive.value) * (1 - Math.exp(-8 * playerDt));
@@ -528,6 +576,7 @@ export class CatController {
 
       // Dual Overdrive powerup fades cleanly into normal cozy Munchkin once landing in the peaceful room
       this.auraMesh.visible = step === 0;
+      this.spriteMaterial.uniforms.uOverclockStrobe.value = 0.0;
       this.spriteMaterial.uniforms.uOverdrive.value = step === 0 ? 1.0 : Math.max(0, this.spriteMaterial.uniforms.uOverdrive.value - dt * 2.5);
 
       this.angerMesh.visible = showAnger;

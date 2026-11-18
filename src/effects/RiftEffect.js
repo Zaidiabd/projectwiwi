@@ -58,11 +58,16 @@ const RIFT_FRAGMENT = /* glsl */ `
 `;
 
 const TEAR_WINDOWS = [
-  { start: 32.0, hit: TIMELINE.tear1 },
-  { start: 44.0, hit: TIMELINE.tear2 },
-  { start: 56.0, hit: TIMELINE.tear3RiftGates },
-  { start: 69.0, hit: TIMELINE.tear4 },
-  { start: TIMELINE.burst2Start, hit: TIMELINE.tear5 }
+  { start: 6.5, hit: TIMELINE.act2Start, isClock: true },
+  { start: 22.5, hit: TIMELINE.stage3Overclock, isClock: false },
+  { start: 34.5, hit: TIMELINE.tear1, isClock: false },
+  { start: 46.5, hit: TIMELINE.tear2, isClock: false },
+  { start: 58.5, hit: TIMELINE.tear3RiftGates, isClock: false },
+  { start: 71.5, hit: TIMELINE.tear4, isClock: false },
+  { start: 132.5, hit: TIMELINE.burst2Start, isClock: false },
+  { start: 138.5, hit: TIMELINE.tear5, isClock: false },
+  { start: 175.5, hit: TIMELINE.overdrivePowerup, isClock: false },
+  { start: TIMELINE.finish - 6.0, hit: TIMELINE.finish, isClock: false }
 ];
 
 export class RiftEffect {
@@ -134,32 +139,91 @@ export class RiftEffect {
     this.group.add(this.fractureMesh);
     this.dummy = new THREE.Object3D();
 
+    // Clock-Shaped Wormhole Gate visuals (Stage 2 transition @ 6.5s -> 10.0s)
+    this.clockGroup = new THREE.Group();
+    this.clockGroup.visible = false;
+    this.group.add(this.clockGroup);
+
+    this.clockMat = new THREE.MeshBasicMaterial({
+      color: '#fde047',
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const clockRim = new THREE.Mesh(new THREE.TorusGeometry(4.85, 0.14, 12, 64), this.clockMat);
+    this.clockGroup.add(clockRim);
+
+    const tickGeom = new THREE.BoxGeometry(0.18, 0.65, 0.12);
+    for (let h = 0; h < 12; h++) {
+      const ang = (h / 12) * Math.PI * 2;
+      const tick = new THREE.Mesh(tickGeom, this.clockMat);
+      tick.position.set(Math.sin(ang) * 4.35, Math.cos(ang) * 4.35, 0.25);
+      tick.rotation.z = -ang;
+      this.clockGroup.add(tick);
+    }
+
+    const hourGeom = new THREE.BoxGeometry(0.22, 2.3, 0.14);
+    hourGeom.translate(0, 1.05, 0);
+    this.hourHand = new THREE.Mesh(hourGeom, this.clockMat);
+    this.hourHand.position.z = 0.4;
+    this.clockGroup.add(this.hourHand);
+
+    const minGeom = new THREE.BoxGeometry(0.14, 3.6, 0.14);
+    minGeom.translate(0, 1.7, 0);
+    this.minHand = new THREE.Mesh(minGeom, this.clockMat);
+    this.minHand.position.z = 0.5;
+    this.clockGroup.add(this.minHand);
+
     this.reset();
   }
 
   reset() {
     this.group.visible = false;
+    this.clockGroup.visible = false;
     this.group.position.set(0, 3.8, -85);
     this.group.scale.setScalar(0.35);
     this.discMat.uniforms.uTime.value = 0;
     this.discMat.uniforms.uIntensity.value = 0;
     this.light.intensity = 0;
-    this.passZ = -90;
   }
 
   update(worldDt, realDt, state, beatEnergy = 0) {
     const tSec = state.runElapsed;
-    if (tSec < 32.0 || state.actIndex >= 4) {
+    if (state.actIndex >= 4) {
       this.group.visible = false;
       return;
     }
 
+    // Discrete stage-transition gates ONLY (no continuous portal spam!)
+    let matchedWindow = null;
+    for (let i = 0; i < TEAR_WINDOWS.length; i++) {
+      const w = TEAR_WINDOWS[i];
+      if (tSec >= w.start && tSec < w.hit) {
+        matchedWindow = w;
+        break;
+      }
+    }
+
+    if (!matchedWindow) {
+      this.group.visible = false;
+      this.light.intensity = 0;
+      return;
+    }
+
     this.group.visible = true;
+    this.clockGroup.visible = Boolean(matchedWindow.isClock);
     this.discMat.uniforms.uTime.value += worldDt * (1.45 + state.tearCount * 0.18);
     this.discMat.uniforms.uBeat.value = beatEnergy;
 
     // Color theme shifts per stage
-    if (state.stage2BurstActive) {
+    if (matchedWindow.isClock) {
+      this.discMat.uniforms.uColorA.value.set('#38f3ff');
+      this.discMat.uniforms.uColorB.value.set('#f59e0b');
+      this.ringMatA.color.set('#fde047');
+      this.ringMatB.color.set('#22e6ff');
+      this.light.color.set('#fde047');
+    } else if (state.stage2BurstActive || matchedWindow.hit === TIMELINE.burst2Start) {
       this.discMat.uniforms.uColorA.value.set('#ffbe3b');
       this.discMat.uniforms.uColorB.value.set('#ff2a85');
       this.ringMatA.color.set('#ffbe3b');
@@ -185,40 +249,16 @@ export class RiftEffect {
       this.light.color.set('#9333ea');
     }
 
-    // Check if approaching one of the 5 major timed dimensional tears
-    let matchedWindow = null;
-    for (const w of TEAR_WINDOWS) {
-      if (tSec >= w.start && tSec < w.hit) {
-        matchedWindow = w;
-        break;
-      }
-    }
+    const ratio = (tSec - matchedWindow.start) / (matchedWindow.hit - matchedWindow.start);
+    const targetZ = THREE.MathUtils.lerp(-92, 3.0, Math.pow(ratio, 1.4));
+    const targetScale = THREE.MathUtils.lerp(0.42, 1.65, ratio) * (1 + beatEnergy * 0.06);
+    const intensity = Math.min(1, ratio * 1.35);
+    this.group.position.y = THREE.MathUtils.lerp(4.2, 2.55, ratio);
 
-    let targetZ = -85;
-    let targetScale = 0.5;
-    let intensity = 1.0;
-
-    if (matchedWindow) {
-      const ratio = (tSec - matchedWindow.start) / (matchedWindow.hit - matchedWindow.start);
-      targetZ = THREE.MathUtils.lerp(-94, 3.0, Math.pow(ratio, 1.45));
-      targetScale = THREE.MathUtils.lerp(0.38, 1.65, ratio) * (1 + beatEnergy * 0.06);
-      intensity = Math.min(1, ratio * 1.3);
-      this.group.position.y = THREE.MathUtils.lerp(4.4, 2.5, ratio);
-      this.passZ = -92;
-    } else if (tSec >= TIMELINE.finish - 7.0) {
-      // Final exit rift before 216s leap
-      const ratio = (tSec - (TIMELINE.finish - 7.0)) / 7.0;
-      targetZ = THREE.MathUtils.lerp(-88, -9.5, Math.pow(ratio, 1.3));
-      targetScale = THREE.MathUtils.lerp(0.55, 1.6, ratio) * (1 + beatEnergy * 0.07);
-      this.group.position.y = THREE.MathUtils.lerp(4.2, 2.6, ratio);
-    } else {
-      // Continuous post-tear streaming portals flying past during intense chase
-      this.passZ += state.speed * 1.15 * worldDt;
-      if (this.passZ > 18) this.passZ = -98;
-      targetZ = this.passZ;
-      targetScale = 1.05 + state.tearCount * 0.1 + beatEnergy * 0.12;
-      intensity = 0.85;
-      this.group.position.y = 2.85;
+    if (this.clockGroup.visible) {
+      this.clockMat.opacity = intensity * 0.92;
+      this.hourHand.rotation.z -= worldDt * 2.4;
+      this.minHand.rotation.z -= worldDt * 12.0;
     }
 
     this.discMat.uniforms.uIntensity.value = intensity;
@@ -234,19 +274,22 @@ export class RiftEffect {
     this.ringMatB.opacity = intensity * (0.58 + beatEnergy * 0.35);
     this.light.intensity = intensity * (14 + state.tearCount * 2.5);
 
-    // Jagged fracture shards framing the portal mouth
-    this.fractureMat.color.copy(this.ringMatA.color);
-    this.fractureMat.opacity = intensity * (0.55 + beatEnergy * 0.35);
-    const rotBase = this.discMat.uniforms.uTime.value * 0.55;
-    for (let i = 0; i < this.fractureCount; i++) {
-      const ang = (i / this.fractureCount) * Math.PI * 2 + rotBase;
-      const rad = 5.1 + Math.sin(ang * 3 + rotBase * 2) * 0.45;
-      this.dummy.position.set(Math.cos(ang) * rad, Math.sin(ang) * rad, (i % 2 === 0 ? 0.6 : -0.6));
-      this.dummy.rotation.set(0, 0, ang + Math.PI * 0.5);
-      this.dummy.scale.set(0.85, 0.9 + beatEnergy * 0.35, 0.85);
-      this.dummy.updateMatrix();
-      this.fractureMesh.setMatrixAt(i, this.dummy.matrix);
+    // Jagged fracture shards framing the portal mouth (hidden cleanly during clock wormhole)
+    this.fractureMesh.visible = !matchedWindow.isClock;
+    if (this.fractureMesh.visible) {
+      this.fractureMat.color.copy(this.ringMatA.color);
+      this.fractureMat.opacity = intensity * (0.55 + beatEnergy * 0.35);
+      const rotBase = this.discMat.uniforms.uTime.value * 0.55;
+      for (let i = 0; i < this.fractureCount; i++) {
+        const ang = (i / this.fractureCount) * Math.PI * 2 + rotBase;
+        const rad = 5.1 + Math.sin(ang * 3 + rotBase * 2) * 0.45;
+        this.dummy.position.set(Math.cos(ang) * rad, Math.sin(ang) * rad, i % 2 === 0 ? 0.6 : -0.6);
+        this.dummy.rotation.set(0, 0, ang + Math.PI * 0.5);
+        this.dummy.scale.set(0.85, 0.9 + beatEnergy * 0.35, 0.85);
+        this.dummy.updateMatrix();
+        this.fractureMesh.setMatrixAt(i, this.dummy.matrix);
+      }
+      this.fractureMesh.instanceMatrix.needsUpdate = true;
     }
-    this.fractureMesh.instanceMatrix.needsUpdate = true;
   }
 }

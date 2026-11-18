@@ -110,17 +110,13 @@ export class Corridor {
   }
 
   update(worldDt, speed, actIndex, runElapsed, beatEnergy = 0) {
-    // Fade corridor in 4s->10s, strong through 26s, dissolve into black Overclock void 26s->35s
-    let visibilityFactor = 0;
-    if (runElapsed < 10.0) {
-      visibilityFactor = Math.max(0, (runElapsed - 3.5) / 6.5) * 0.65;
-    } else if (runElapsed < 26.0) {
-      visibilityFactor = 0.65 + Math.min(1, (runElapsed - 10.0) / 5.0) * 0.35;
-    } else if (runElapsed < 35.0) {
-      visibilityFactor = Math.max(0, 1 - (runElapsed - 26.0) / 9.0);
+    // Keep neighborhood & Stage 3 pitch-black Overclock unobstructed by arch corridors
+    if (runElapsed < 25.7 || actIndex >= 4) {
+      this.group.visible = false;
+      return;
     }
-
-    if (visibilityFactor <= 0.01 || actIndex >= 4) {
+    const visibilityFactor = 0;
+    if (visibilityFactor <= 0.01) {
       this.group.visible = false;
       return;
     }

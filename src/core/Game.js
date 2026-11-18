@@ -432,15 +432,17 @@ export class Game {
       }
 
       const targetWorldScale = this.state.stage2BurstActive
-        ? 0.16
-        : this.state.burstActive
-          ? 0.24
-          : this.overclockSlowmoTimer > 0
-            ? 0.42
-            : 1.0;
+        ? 0.20
+        : this.state.overclock1Active
+          ? 0.22
+          : this.state.burstActive
+            ? 0.24
+            : this.overclockSlowmoTimer > 0
+              ? 0.42
+              : 1.0;
       const targetPlayerScale = this.state.stage2BurstActive
         ? 1.24
-        : this.state.burstActive
+        : this.state.overclock1Active || this.state.burstActive
           ? 1.15
           : 1.0;
 
@@ -485,19 +487,26 @@ export class Game {
 
       const events = this.state.updateTimelineFromSeconds();
       if (events.stageChanged) {
-        if (this.state.stageIndex === 2) {
-          // 26s: Slow-motion animation & unlock Space Temporal Burst
-          this.overclockSlowmoTimer = 2.8;
-          this.flashValue = 0.26;
+        if (this.state.stageIndex === 1) {
+          // 10s: Clock-shaped wormhole breached -> Booster unlocked!
+          this.flashValue = 0.42;
+          this.rippleValue = 0.65;
+          this.audio.playPhaseShimmer();
+          this.hud.showBanner('STAGE II // 10s', 'CLOCK WORMHOLE BREACHED • BOOSTER AVAILABLE', '#fde047', 3.0);
+        } else if (this.state.stageIndex === 2) {
+          // 25.7s: Stage 3 Overclock (Pitch-black white-silhouette world, alternating neon strobe)
+          this.overclockSlowmoTimer = 0;
+          this.flashValue = 0.55;
+          this.rippleValue = 0.78;
           this.audio.playTemporalBurst();
-          this.hud.showBanner('STAGE III // 26s', 'OVERCLOCK SLOW-MO • TEMPORAL BURST UNLOCKED', '#22e6ff', 3.0);
+          this.hud.showBanner('STAGE III // 25.7s', 'OVERCLOCK ENGAGED • PITCH BLACK SILHOUETTES', '#22e6ff', 3.2);
         } else if (events.enteredBurst2) {
-          // 136s-142s: Distinct Stage 2 Temporal Burst
+          // 136s-142s: 2nd Overclock -> Slowed Yellow Pillars of Light
           this.flashValue = 0.55;
           this.rippleValue = 0.75;
-          this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.55, 0.1, '#ffbe3b', 11.5);
+          this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.55, 0.1, '#fde047', 11.5);
           this.audio.playTemporalBurst();
-          this.hud.showBanner('BURST II // 136s', 'STAGE II TEMPORAL BURST ENGAGED', '#ffbe3b', 3.2);
+          this.hud.showBanner('OVERCLOCK II // 136s', 'SLOWED YELLOW LIGHT PILLARS • VOLTAGE SURGE', '#fde047', 3.2);
         } else if (events.enteredOverdrive) {
           // 179s: Halfway through TEAR V -> Dual Overdrive on BOTH Wiwi & Lily!
           this.flashValue = 0.72;
@@ -525,18 +534,18 @@ export class Game {
         this.audio.playPhaseShimmer();
 
         if (this.state.tearCount === 1) {
-          this.hud.showBanner('TEAR I // 38s', 'SPACE-TIME BREACH • BODY CHARGE ACTIVE', '#a855f7', 2.8);
+          this.hud.showBanner('TEAR I // 38s', 'WORLD COLLAPSE • VOID FOOTING • BURST UNLOCKED', '#a855f7', 3.0);
         } else if (this.state.tearCount === 2) {
-          this.hud.showBanner('TEAR II // 50s', 'DIMENSIONAL SURGE INTENSIFYING', '#c084fc', 2.6);
+          this.hud.showBanner('TEAR II // 50s', 'FLYING DEBRIS MAELSTROM INTENSIFYING', '#c084fc', 2.6);
         } else if (this.state.tearCount === 3) {
-          this.hud.showBanner('TEAR III // 62s', 'RIFT PYLON GATES ACTIVE • STAY IN CLEAR LANES', '#2dd4bf', 3.0);
+          this.hud.showBanner('STAGE IV // 62s', 'SYNTHWAVE TITANS • 1 SAFE EXIT LANE', '#ff2a85', 3.2);
         } else if (this.state.tearCount === 4) {
-          this.hud.showBanner('TEAR IV // 75s', 'HYPERSTORM RUPTURE • MAXIMUM ESCALATION', '#e879f9', 3.0);
+          this.hud.showBanner('TEAR IV // 75s', 'SYNTHWAVE HAND BARRAGE ESCALATING', '#e879f9', 3.0);
         } else if (this.state.tearCount === 5) {
-          // Lily bursts into the chase at TEAR V (142s)!
+          // 142s: 2nd Overclock ends -> Pillars turn Black w/ Red Outline & Lily joins TEAR V!
           this.audio.playAnnoyedPop();
           this.audio.playRivalAlert();
-          this.hud.showBanner('TEAR V // 142s', 'LILY JOINED THE CHASE! REACH 23,000 m!', '#ff2a4b', 3.6);
+          this.hud.showBanner('TEAR V // 142s', 'BLACK-RED PILLARS • LILY JOINED THE CHASE!', '#ff2a4b', 3.6);
           this.hud.showRivalAlert('LILY', 'LONG-HAIRED CHALLENGER JOINED TEAR V', '#ff2a4b', 3.6);
         }
       }
@@ -548,7 +557,7 @@ export class Game {
         );
 
         this.lily.updateChase(this.time.playerDt, this.cat, this.state, this.environment.laserX);
-        this.environment.update(this.time.worldDt, realDt, this.state, beatEnergy, this.cat.x);
+        this.environment.update(this.time.worldDt, realDt, this.state, beatEnergy, this.cat, this.lily);
         this.corridor.update(this.time.worldDt, this.state.speed, this.state.actIndex, this.state.runElapsed, beatEnergy);
         this.voidWorld.update(this.time.worldDt, this.state);
         this.riftWorld.update(this.time.worldDt, this.state, beatEnergy);
@@ -610,7 +619,11 @@ export class Game {
     if (this.compositePass) {
       const isPlaying = this.state.phase === 'playing';
       const spd = isPlaying ? this.state.normalizedSpeed : 0;
-      const anyBurst = this.state.burstActive || this.state.stage2BurstActive || this.state.overdriveMode;
+      const anyBurst =
+        this.state.overclock1Active ||
+        this.state.burstActive ||
+        this.state.stage2BurstActive ||
+        this.state.overdriveMode;
       this.compositePass.uniforms.uTime.value = this.time.realElapsed;
       this.compositePass.uniforms.uSpeedBlur.value =
         spd > 0.22 ? (spd - 0.22) * 0.98 + (anyBurst ? 0.42 : 0) : 0;
@@ -619,13 +632,15 @@ export class Game {
           ? Math.min(1.25, Math.max(0, (spd - 0.30) * 1.4) + (this.state.overdriveMode ? 0.45 : anyBurst ? 0.25 : 0))
           : 0;
       this.compositePass.uniforms.uSpeedLineColor.value.set(
-        this.state.overdriveMode
-          ? '#38f3ff'
-          : this.state.stage2BurstActive
-            ? '#ffbe3b'
-            : this.state.tearCount >= 5
-              ? '#ff2a4b'
-              : '#22e6ff'
+        this.state.stage2BurstActive
+          ? '#fde047'
+          : this.state.overdriveMode
+            ? '#38f3ff'
+            : this.state.overclock1Active
+              ? '#ff2a85'
+              : this.state.tearCount >= 5
+                ? '#ff2a4b'
+                : '#22e6ff'
       );
       this.compositePass.uniforms.uRipple.value = this.rippleValue;
       this.compositePass.uniforms.uChromatic.value =

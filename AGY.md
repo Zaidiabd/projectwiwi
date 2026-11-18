@@ -133,30 +133,38 @@ soundtrack timeline (`runElapsed`), while player steering, boost,
 slipstream tracking, and obstacle avoidance drive velocity, distance, and
 high-speed intensity:
 
--   `0s--26s`: Quiet opening (`Act 1`) -> Acceleration corridor (`Act 2`);
-    `Space` Temporal Burst stays locked until `26s`.
--   `26s`: Overclock slow-motion animation + `Space` Temporal Burst
-    unlocks (`Stage 1`).
--   `38s`: First space-time fabric tear; electric charges emanate from
-    Wiwi's body and intensify at every subsequent tear.
--   `50s`: Second space-time tear (`Stage 5`), faster speed ceiling.
--   `62s`: Third space-time tear (`Dimensional Rift Pylon Gates`);
-    environment shifts to a crisp teal-magenta overdrive palette and
-    fair, lane-locked rift pylons with floor telegraph strips appear.
--   `75s`: Fourth space-time tear; hyperstorm escalation.
--   `136s--142s`: **Stage 2 Temporal Burst** (distinct golden-crimson
-    time-dilation surge) leading into the fifth space-time tear at `142s`.
--   `142s--216s`: **TEAR V** — High-priority **`! RIVAL DETECTED !`**
-    tactical alert fires as bigger long-haired black-and-white cat
-    **Lily** joins the chase alongside Wiwi while Wiwi displays an
-    annoyed pulsing anger symbol (`💢`) overhead.
+-   `0s--10.0s` (**Stage 1 --- Neighborhood Chase**): Calm 3-lane
+    neighborhood asphalt road with pedestrians, joggers, dogs, and trees
+    on the sidewalks; Boost and Overclock locked.
+-   `10.0s--25.7s` (**Stage 2 --- Clock Gate & Traffic**): Wiwi sprints
+    through a **Clock-Shaped Wormhole Gate** (gates only appear at stage
+    transitions), unlocks the `Shift` Booster, and weaves between 3-lane
+    **Cars and Bikes**.
+-   `25.7s--38.0s` (**Stage 3 Overclock --- Pitch Black Silhouettes**):
+    Boost locks out; the environment switches to **pitch black**, Wiwi
+    flashes alternately between black and neon with dense neon
+    afterimages, and all pedestrians, joggers, dogs, trees, cars, and
+    bikes become slow-motion **pure white silhouettes**.
+-   `38.0s--62.0s` (**World Collapse --- Void Footing & Flying Debris**):
+    The physical world shatters, leaving nonexistent ground footing
+    illuminated by glowing step pads wherever Wiwi steps; flying land
+    chunks, cars, and trees tumble in the background and 3-lane hazards
+    (`Boost` & `Space` Temporal Burst unlocked).
+-   `62.0s--136.0s` (**Stage 4 --- Synthwave Titans**): Giant
+    interdimensional **Synthwave Humanoid Beings** with glowing eyes
+    loom ahead and stomp colossal hands across **2 lanes at a time**
+    (alternating Left+Center / Center+Right), leaving 1 safe exit lane.
+-   `136.0s--142.0s` (**2nd Overclock --- Yellow Light Pillars**): Retained
+    yellow Overclock transforms obstacles into slowed **Yellow Pillars
+    of Light** wrapped in electric charge rings.
+-   `142.0s--216.0s` (**TEAR V --- Black-Red Pillars & Lily Chase**):
+    Pillars shift to **pitch black with a red outline** + electric
+    charges as **`! RIVAL DETECTED !`** heralds **Lily** joining the
+    race toward `23,000 m`.
 -   `179s`: **Dual Overdrive** halfway through TEAR V — Both Wiwi and
     Lily ignite into synchronized Overdrive while keeping their natural
-    coats intact: subtle plasma back-auras, glowing silhouette rims,
-    thick red/black/blue lightning on Wiwi paired with
-    emerald/crimson/black lightning and sparks on Lily, plus supersonic
-    smeared afterimages. After `179s`, both cats are hindered by only
-    20% on obstacle hits and keep gaining speed continuously.
+    coats intact; obstacles hinder both by only 20% while speed climbs
+    continuously.
 -   `216s`: Final dual leap into Act 5 (`The Laser Reveal`): clearing
     `>= 23,000 m` lets Wiwi beat Lily to the laser (`UNIVERSE DESTROYED.
     LASER ACQUIRED.`); falling short lets Lily steal it instead.

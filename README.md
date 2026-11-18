@@ -8,27 +8,26 @@ An interactive 2.5D browser speed-running experience built with Three.js (WebGL 
 
 | Input | Action |
 | --- | --- |
-| `W` / `Arrow Up` | Accelerate forward |
-| `A` / `Arrow Left` | Steer left (track the laser slipstream) |
-| `D` / `Arrow Right` | Steer right (track the laser slipstream) |
-| `Shift` (hold) | Overdrive Boost |
-| `Space` | Temporal Burst (unlocks at `26s`; Stage II upgrade at `136s`) — or agile **Cat Vault Hop** when Burst is locked/recharging |
+| `W` / `Arrow Up` | Run / chase forward |
+| `A` / `Arrow Left` | Switch lane left (3-lane road & void grid) |
+| `D` / `Arrow Right` | Switch lane right (3-lane road & void grid) |
+| `Shift` (hold) | Booster (unlocks in Stage 2 @ `10s`; locked during Stage 3 Overclock `25.7s–38s`) |
+| `Space` | Manual Temporal Burst (unlocks @ `38s`; 2nd Overclock @ `136s`) — or **Cat Vault Hop** when locked |
 | `I` / `AI PLAYTHROUGH` | Toggle predictive AI autopilot (avoids all obstacles & optimizes speed) |
 | `P` / `Esc` | Pause / Resume |
 | `M` | Mute / Unmute audio |
 | Mobile touch pads | Steer (`◀` / `▶`), `BOOST`, and `BURST` |
 
-## Timed Sequence (`216s` Audio-Synced Run)
+## Timed Sequence (`216s` Audio-Synced Run • 3-Lane Navigation)
 
-- `0s – 26s`: Quiet opening into acceleration corridor (Temporal Burst locked).
-- `26s`: Overclock slow-motion beat + `Space` Temporal Burst unlocks.
-- `38s`: First space-time fabric tear; electric charges emanate from Wiwi's body.
-- `50s`: Second space-time tear; speed and electric intensity escalate.
-- `62s`: Third space-time tear; **Dimensional Rift Pylon Gates** (fair, lane-locked obstacles with glowing ground telegraph strips) activate.
-- `75s`: Fourth space-time tear; hyperstorm escalation.
-- `136s – 142s`: **Stage II Temporal Burst** (golden-crimson time-dilation overdrive) leading into Tear V (`142s`).
-- `142s – 216s`: **TEAR V** — Tactical **`! RIVAL DETECTED !`** warning alert triggers as big long-haired black-and-white cat **Lily** joins the chase alongside Wiwi (triggering Wiwi's pulsing `💢` anger symbol) in a race to clear the `23,000 m` threshold.
-- `179s`: **Dual Overdrive** halfway through TEAR V — both Wiwi and Lily erupt into synchronized Overdrive (electric cyan/crimson plasma rim highlights, subtle back-auras, thick red/black/blue lightning on Wiwi paired with emerald/crimson/black lightning on Lily, supersonic smeared afterimages). Both cats continue gaining speed while hindered by only 20% on obstacle impacts.
+- `0s – 10.0s` (**Stage I — Neighborhood Chase**): Wiwi runs normally down a 3-lane neighborhood asphalt road chasing the red laser dot while pedestrians, joggers, and dogs walk along the sidewalks (Boost and Overclock locked).
+- `10.0s – 25.7s` (**Stage II — Clock Gate Acceleration**): Wiwi passes through a **Clock-Shaped Wormhole Gate** (gates/tears appear only at stage transitions), unlocks the `Shift` **Booster**, and weaves across the 3 lanes to evade oncoming **Cars and Bikes**.
+- `25.7s – 38.0s` (**Stage III — Pitch-Black Overclock**): Overclock locks out manual boost and turns the entire world **pitch black**; Wiwi flashes alternately between pitch-black and blazing neon while trailing neon afterimages, and all pedestrians, joggers, dogs, cars, bikes, and trees become slow-motion **white silhouettes**.
+- `38.0s – 62.0s` (**World Collapse — Tears I & II**): The physical neighborhood collapses into nonexistent void footing that glows with reactive neon step pads wherever Wiwi steps; broken land chunks, cars, and uprooted trees tumble through the background and serve as 3-lane obstacles (`Boost` & manual `Temporal Burst` unlocked).
+- `62.0s – 136.0s` (**Stage IV — Synthwave Titans**): Giant interdimensional **Synthwave Humanoid Beings** with glowing eyes loom over the collapsed road and slam colossal hands onto **2 lanes at a time** (alternating Left+Center and Center+Right), leaving 1 safe exit lane.
+- `136.0s – 142.0s` (**2nd Overclock**): Yellow Overclock intensifies while obstacles become slowed **Yellow Pillars of Light** wrapped in electric charge rings.
+- `142.0s – 216.0s` (**TEAR V — Black-Red Pillars & Lily Chase**): Pillars turn **pitch black with a glowing red outline** + electric charges as tactical **`! RIVAL DETECTED !`** triggers for **Lily** joining the chase toward `23,000 m`.
+- `179s`: **Dual Overdrive** halfway through TEAR V — both Wiwi and Lily erupt into synchronized Overdrive, continue gaining speed relentlessly, and are hindered by only 20% on obstacle hits.
 - `216s`: Both cats leap through the final rift into abrupt silence inside a quiet living room; if `distance >= 23,000 m`, Wiwi catches the laser while Lily is shocked (`UNIVERSE DESTROYED. LASER ACQUIRED.`); otherwise Lily steals it while Wiwi belly-flops (`UNIVERSE DESTROYED. LILY STOLE THE LASER.`).
 
 ## Running Locally

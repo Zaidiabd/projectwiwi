@@ -137,7 +137,9 @@ export class TouchControls {
     this.burstBtn.classList.remove('locked', 'ready', 'stage2');
     if (!state.burstUnlocked) {
       this.burstBtn.classList.add('locked');
-      this.burstBtn.textContent = `${Math.max(0, Math.ceil(26 - state.runElapsed))}s`;
+      this.burstBtn.textContent = state.overclock1Active
+        ? 'OVERCLOCK'
+        : `${Math.max(0, Math.ceil(38 - state.runElapsed))}s`;
     } else if (state.stage2BurstActive || state.burstStage === 2) {
       this.burstBtn.classList.add(state.burstCharge >= 0.35 || state.stage2BurstActive ? 'stage2' : 'locked');
       this.burstBtn.textContent = state.stage2BurstActive ? 'MAX II' : 'BURST II';

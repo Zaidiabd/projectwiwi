@@ -97,11 +97,11 @@ export class AfterimageSystem {
     const anyBurst = state.burstActive || state.stage2BurstActive;
     const shouldEmit =
       state.phase === 'playing' &&
-      (state.actIndex >= 2 || state.isBoosting || anyBurst || state.overdriveMode) &&
-      state.speed > 18;
+      (state.overclock1Active || state.actIndex >= 2 || state.isBoosting || anyBurst || state.overdriveMode) &&
+      state.speed > 16;
 
     if (shouldEmit) {
-      const interval = state.overdriveMode
+      const interval = state.overdriveMode || state.overclock1Active
         ? 0.018
         : anyBurst
           ? 0.028
@@ -162,6 +162,9 @@ export class AfterimageSystem {
 
       if (state.stage2BurstActive || (state.burstActive && state.burstStage === 2)) {
         tint = this.colorCycle % 2 === 0 ? '#ffbe3b' : '#ff2a85';
+      } else if (state.overclock1Active) {
+        // Flashing vibrant cyan / neon-magenta / white afterimages during Stage 3 Overclock
+        tint = this.colorCycle === 0 ? '#22e6ff' : this.colorCycle === 1 ? '#ff2a85' : '#e0f2fe';
       } else if (state.burstActive) {
         tint = '#38f3ff';
       } else if (state.tearCount >= 5) {

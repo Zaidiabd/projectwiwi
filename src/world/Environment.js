@@ -14,6 +14,9 @@ const FLOOR_FRAGMENT = /* glsl */ `
   uniform float uGridStrength;
   uniform vec3 uBaseColor;
   uniform vec3 uLineColor;
+  uniform float uRoadMode;
+  uniform float uPitchBlack;
+  uniform float uVoidFooting;
   uniform float uPeaceful;
   uniform float uLaserX;
   uniform float uAlignment;
@@ -25,34 +28,9 @@ const FLOOR_FRAGMENT = /* glsl */ `
     vec2 uv = vWorldUv;
     uv.y -= uOffset;
 
-    // Primary anti-aliased grid + fine sub-grid harmonic
-    vec2 gMain = abs(fract(uv * vec2(0.5, 0.25) - 0.5) - 0.5) / fwidth(uv * vec2(0.5, 0.25));
-    float mainLine = 1.0 - min(min(gMain.x, gMain.y), 1.0);
+    vec3 col = uBaseColor;
+    float distFade = exp(-length(vWorldUv) * 0.016);
 
-    vec2 gSub = abs(fract(uv * vec2(1.5, 0.75) - 0.5) - 0.5) / fwidth(uv * vec2(1.5, 0.75));
-    float subLine = (1.0 - min(min(gSub.x, gSub.y), 1.0)) * 0.26;
-
-    // Active runway lane mask & glowing outer boundary rails with scrolling chevrons
-    float centerTrack = smoothstep(5.9, 5.3, abs(vWorldUv.x));
-    float railDist = abs(abs(vWorldUv.x) - 5.55);
-    float edgeGlow = smoothstep(0.28, 0.0, railDist);
-    float chevron = 0.65 + 0.35 * sin(uv.y * 1.4);
-
-    // Dynamic laser slipstream projection along the runway
-    float slipDist = abs(vWorldUv.x - uLaserX);
-    float slipWake = exp(-slipDist * slipDist * 1.8) * smoothstep(2.0, -9.0, vWorldUv.y) * smoothstep(-45.0, -8.0, vWorldUv.y);
-    vec3 slipColor = mix(vec3(1.0, 0.16, 0.30), vec3(0.13, 0.90, 1.0), uAlignment);
-
-    // Distance horizon attenuation
-    float distFade = exp(-length(vWorldUv) * 0.0175);
-
-    float combinedGrid = (mainLine + subLine) * (1.0 + uBeat * 0.28);
-    vec3 col = mix(uBaseColor, uLineColor, clamp(combinedGrid * uGridStrength * centerTrack, 0.0, 1.0));
-    col += uLineColor * edgeGlow * chevron * (0.45 + uBeat * 0.35) * uGridStrength;
-    col += slipColor * slipWake * (0.24 + uAlignment * 0.32) * (1.0 - uPeaceful);
-    col *= mix(distFade, 1.0, uPeaceful);
-
-    // Peaceful warm oak floor in Act 5 living room
     if (uPeaceful > 0.01) {
       float plankX = abs(fract(vWorldUv.x * 0.75) - 0.5);
       float plankZ = abs(fract(vWorldUv.y * 0.18) - 0.5);
@@ -61,7 +39,65 @@ const FLOOR_FRAGMENT = /* glsl */ `
       vec3 woodBase = mix(vec3(0.15, 0.16, 0.20), vec3(0.20, 0.21, 0.26), grain * 0.55);
       vec3 roomCol = mix(woodBase, vec3(0.09, 0.10, 0.13), seam * 0.65);
       col = mix(col, roomCol * exp(-length(vWorldUv) * 0.042), uPeaceful);
+      gl_FragColor = vec4(col, 1.0);
+      return;
     }
+
+    if (uPitchBlack > 0.5) {
+      // Stage 3 Overclock: pitch black ground with crisp white/neon silhouette lane guide hairlines
+      float divL = smoothstep(0.045, 0.0, abs(vWorldUv.x + 1.5)) * step(0.45, fract(uv.y * 0.18));
+      float divR = smoothstep(0.045, 0.0, abs(vWorldUv.x - 1.5)) * step(0.45, fract(uv.y * 0.18));
+      float curb = smoothstep(0.055, 0.0, abs(abs(vWorldUv.x) - 4.55));
+      col = vec3(0.0);
+      col += vec3(0.92, 0.96, 1.0) * (divL + divR) * 0.28 * distFade;
+      col += uLineColor * curb * 0.42 * distFade;
+      gl_FragColor = vec4(col, 1.0);
+      return;
+    }
+
+    if (uRoadMode > 0.5) {
+      // Neighborhood 3-Lane Road (Lanes centered at -3.0, 0.0, +3.0 -> dividers at +/-1.5, curb at +/-4.55)
+      float absX = abs(vWorldUv.x);
+      float onAsphalt = 1.0 - smoothstep(4.45, 4.60, absX);
+      float onSidewalk = smoothstep(4.55, 4.65, absX) * (1.0 - smoothstep(8.2, 8.6, absX));
+      float curbLine = smoothstep(0.10, 0.0, abs(absX - 4.55));
+
+      float grain = fract(sin(dot(floor(uv * 3.0), vec2(12.9898, 78.233))) * 43758.5453);
+      vec3 asphalt = mix(vec3(0.075, 0.085, 0.11), vec3(0.095, 0.108, 0.135), grain * 0.5);
+      vec3 sidewalk = vec3(0.16, 0.175, 0.205);
+      float tileZ = smoothstep(0.04, 0.0, abs(fract(uv.y * 0.35) - 0.5));
+      sidewalk = mix(sidewalk, vec3(0.11, 0.12, 0.15), tileZ * 0.45);
+      vec3 grass = vec3(0.04, 0.09, 0.06);
+
+      col = mix(grass, sidewalk, onSidewalk);
+      col = mix(col, asphalt, onAsphalt);
+      col = mix(col, vec3(0.28, 0.31, 0.36), curbLine);
+
+      // Crisp 3-lane dashed lane dividers at x = -1.5 & +1.5
+      float dash = smoothstep(0.35, 0.45, fract(uv.y * 0.18)) * (1.0 - smoothstep(0.75, 0.85, fract(uv.y * 0.18)));
+      float laneMarks = (smoothstep(0.08, 0.02, abs(vWorldUv.x + 1.5)) + smoothstep(0.08, 0.02, abs(vWorldUv.x - 1.5))) * dash;
+      float edgeStripe = smoothstep(0.08, 0.02, abs(absX - 4.32));
+      col += vec3(0.78, 0.85, 0.94) * laneMarks * 0.82;
+      col += vec3(0.95, 0.72, 0.22) * edgeStripe * 0.45;
+
+      col *= mix(0.28, 1.0, distFade);
+      gl_FragColor = vec4(col, 1.0);
+      return;
+    }
+
+    // Post-Stage 3 Collapsed World: Nonexistent physical footing — dark void with subtle 3-lane filament threads
+    // (real footing illumination comes from the glowing Step Pads under Wiwi & Lily!)
+    float absX = abs(vWorldUv.x);
+    float laneRail = smoothstep(0.06, 0.0, abs(absX - 4.55))
+      + smoothstep(0.045, 0.0, abs(vWorldUv.x + 1.5)) * 0.45
+      + smoothstep(0.045, 0.0, abs(vWorldUv.x - 1.5)) * 0.45;
+    float slipDist = abs(vWorldUv.x - uLaserX);
+    float slipWake = exp(-slipDist * slipDist * 1.8) * smoothstep(2.0, -9.0, vWorldUv.y) * smoothstep(-45.0, -8.0, vWorldUv.y);
+    vec3 slipColor = mix(vec3(1.0, 0.16, 0.30), vec3(0.13, 0.90, 1.0), uAlignment);
+
+    col = mix(vec3(0.01, 0.012, 0.024), uLineColor * 0.42, laneRail * uGridStrength * (0.45 + uBeat * 0.25));
+    col += slipColor * slipWake * (0.20 + uAlignment * 0.28);
+    col *= distFade;
 
     gl_FragColor = vec4(col, 1.0);
   }
@@ -81,6 +117,41 @@ function createGlowDiscTexture(innerColor, outerColor) {
   const tex = new THREE.CanvasTexture(c);
   tex.needsUpdate = true;
   return tex;
+}
+
+function mergeSimpleParts(parts) {
+  const posArrays = [];
+  const normArrays = [];
+  const indices = [];
+  let vertOffset = 0;
+
+  for (const part of parts) {
+    const g = part.geom;
+    if (part.pos) g.translate(part.pos[0], part.pos[1], part.pos[2]);
+    const pos = g.attributes.position.array;
+    const norm = g.attributes.normal.array;
+    const idx = g.index.array;
+    posArrays.push(pos);
+    normArrays.push(norm);
+    for (let i = 0; i < idx.length; i++) indices.push(idx[i] + vertOffset);
+    vertOffset += g.attributes.position.count;
+    g.dispose();
+  }
+
+  const totalPos = posArrays.reduce((s, a) => s + a.length, 0);
+  const mergedPos = new Float32Array(totalPos);
+  const mergedNorm = new Float32Array(totalPos);
+  let off = 0;
+  for (let i = 0; i < posArrays.length; i++) {
+    mergedPos.set(posArrays[i], off);
+    mergedNorm.set(normArrays[i], off);
+    off += posArrays[i].length;
+  }
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute('position', new THREE.BufferAttribute(mergedPos, 3));
+  merged.setAttribute('normal', new THREE.BufferAttribute(mergedNorm, 3));
+  merged.setIndex(indices);
+  return merged;
 }
 
 const SKY_VERTEX = /* glsl */ `
@@ -118,7 +189,6 @@ const SKY_FRAGMENT = /* glsl */ `
     float h = clamp(vDir.y, 0.0, 1.0);
     vec3 col = mix(uSkyHorizon, uSkyTop, pow(h, 0.62));
 
-    // Swirling multi-octave cosmic nebula band + aurora curtain across upper sky
     vec2 uv = vDir.xz / (h + 0.32);
     float n1 = noise(uv * 1.4 + vec2(uTime * 0.06, -uTime * 0.12));
     float n2 = noise(uv * 3.1 - vec2(uTime * 0.09, uTime * 0.05));
@@ -126,7 +196,6 @@ const SKY_FRAGMENT = /* glsl */ `
     float neb = smoothstep(0.42, 0.90, n1 * 0.62 + n2 * 0.38);
     col += uNebulaColor * (neb + aurora * 0.24 * smoothstep(0.08, 0.32, h)) * uNebulaStrength * smoothstep(0.02, 0.42, h);
 
-    // Crisp dual-layer distant starfield
     float star1 = step(0.9965, hash(floor(vDir.xz * 220.0 + floor(vDir.y * 120.0))));
     float star2 = step(0.9982, hash(floor(vDir.xz * 340.0 - floor(vDir.y * 170.0))));
     col += vec3(0.78, 0.92, 1.0) * (star1 * 0.65 + star2 * 1.1) * smoothstep(0.04, 0.28, h);
@@ -136,22 +205,28 @@ const SKY_FRAGMENT = /* glsl */ `
 `;
 
 const SLIPSTREAM_SEGS = 14;
+const PERSON_COUNT = 16;
+const DOG_COUNT = 10;
+const TREE_COUNT = 22;
+const LAMP_COUNT = 16;
+const STEP_PAD_POOL = 28;
 
 export class Environment {
   constructor(scene) {
     this.scene = scene;
-    this.scene.background = new THREE.Color('#05070d');
-    this.scene.fog = new THREE.FogExp2('#05070d', 0.016);
+    this.scene.background = new THREE.Color('#091326');
+    this.scene.fog = new THREE.FogExp2('#091326', 0.013);
 
-    // Pre-allocated scratch colors to guarantee zero per-frame GC allocations
     this.scratchBg = new THREE.Color();
     this.scratchLine = new THREE.Color();
+    this.scratchPadColor = new THREE.Color();
+    this.dummy = new THREE.Object3D();
 
     // Lighting
-    this.hemiLight = new THREE.HemisphereLight('#5c85b8', '#090b12', 0.85);
+    this.hemiLight = new THREE.HemisphereLight('#7dd3fc', '#111827', 0.95);
     this.scene.add(this.hemiLight);
 
-    this.dirLight = new THREE.DirectionalLight('#bae6fd', 0.9);
+    this.dirLight = new THREE.DirectionalLight('#e0f2fe', 1.05);
     this.dirLight.position.set(4, 12, 8);
     this.scene.add(this.dirLight);
 
@@ -160,10 +235,10 @@ export class Environment {
     this.skyMat = new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
-        uSkyTop: { value: new THREE.Color('#03050c') },
-        uSkyHorizon: { value: new THREE.Color('#0b172a') },
+        uSkyTop: { value: new THREE.Color('#050b18') },
+        uSkyHorizon: { value: new THREE.Color('#132444') },
         uNebulaColor: { value: new THREE.Color('#22e6ff') },
-        uNebulaStrength: { value: 0.25 }
+        uNebulaStrength: { value: 0.08 }
       },
       vertexShader: SKY_VERTEX,
       fragmentShader: SKY_FRAGMENT,
@@ -174,7 +249,7 @@ export class Environment {
     this.skyMesh = new THREE.Mesh(skyGeom, this.skyMat);
     this.scene.add(this.skyMesh);
 
-    // Floor plane with custom grid/void/peaceful shader
+    // Floor plane with neighborhood road / pitch-black Overclock / nonexistent void / Act 5 shader
     const floorGeom = new THREE.PlaneGeometry(180, 260, 1, 1);
     floorGeom.rotateX(-Math.PI / 2);
     this.floorMat = new THREE.ShaderMaterial({
@@ -183,6 +258,9 @@ export class Environment {
         uGridStrength: { value: 0.45 },
         uBaseColor: { value: new THREE.Color('#060912') },
         uLineColor: { value: new THREE.Color('#22e6ff') },
+        uRoadMode: { value: 1.0 },
+        uPitchBlack: { value: 0.0 },
+        uVoidFooting: { value: 0.0 },
         uPeaceful: { value: 0.0 },
         uLaserX: { value: 0.0 },
         uAlignment: { value: 0.0 },
@@ -194,6 +272,123 @@ export class Environment {
     this.floorMesh = new THREE.Mesh(floorGeom, this.floorMat);
     this.floorMesh.position.z = -90;
     this.scene.add(this.floorMesh);
+
+    // Roadside Neighborhood Group (Pedestrians, Joggers, Dogs, Trees, Streetlamps)
+    this.roadsideGroup = new THREE.Group();
+    this.scene.add(this.roadsideGroup);
+
+    const personGeom = mergeSimpleParts([
+      { geom: new THREE.CylinderGeometry(0.18, 0.22, 0.85, 8), pos: [0, 0.72, 0] },
+      { geom: new THREE.SphereGeometry(0.17, 8, 6), pos: [0, 1.32, 0] },
+      { geom: new THREE.BoxGeometry(0.13, 0.45, 0.14), pos: [-0.1, 0.22, 0] },
+      { geom: new THREE.BoxGeometry(0.13, 0.45, 0.14), pos: [0.1, 0.22, 0] }
+    ]);
+    this.personMat = new THREE.MeshStandardMaterial({
+      color: '#cbd5e1',
+      emissive: '#000000',
+      roughness: 0.65
+    });
+    this.personMesh = new THREE.InstancedMesh(personGeom, this.personMat, PERSON_COUNT);
+    this.personMesh.frustumCulled = false;
+    this.roadsideGroup.add(this.personMesh);
+
+    const dogGeom = mergeSimpleParts([
+      { geom: new THREE.BoxGeometry(0.28, 0.26, 0.62), pos: [0, 0.34, 0] },
+      { geom: new THREE.BoxGeometry(0.20, 0.20, 0.24), pos: [0, 0.50, -0.32] },
+      { geom: new THREE.BoxGeometry(0.08, 0.22, 0.08), pos: [-0.09, 0.11, -0.2] },
+      { geom: new THREE.BoxGeometry(0.08, 0.22, 0.08), pos: [0.09, 0.11, 0.2] }
+    ]);
+    this.dogMat = new THREE.MeshStandardMaterial({
+      color: '#b45309',
+      emissive: '#000000',
+      roughness: 0.75
+    });
+    this.dogMesh = new THREE.InstancedMesh(dogGeom, this.dogMat, DOG_COUNT);
+    this.dogMesh.frustumCulled = false;
+    this.roadsideGroup.add(this.dogMesh);
+
+    const treeGeom = mergeSimpleParts([
+      { geom: new THREE.CylinderGeometry(0.16, 0.22, 1.4, 6), pos: [0, 0.7, 0] },
+      { geom: new THREE.ConeGeometry(1.15, 2.5, 7), pos: [0, 2.35, 0] }
+    ]);
+    this.treeMat = new THREE.MeshStandardMaterial({
+      color: '#15803d',
+      emissive: '#000000',
+      roughness: 0.8
+    });
+    this.treeMesh = new THREE.InstancedMesh(treeGeom, this.treeMat, TREE_COUNT);
+    this.treeMesh.frustumCulled = false;
+    this.roadsideGroup.add(this.treeMesh);
+
+    const lampGeom = mergeSimpleParts([
+      { geom: new THREE.CylinderGeometry(0.06, 0.09, 4.2, 6), pos: [0, 2.1, 0] },
+      { geom: new THREE.BoxGeometry(0.55, 0.12, 0.24), pos: [0, 4.15, 0] }
+    ]);
+    this.lampMat = new THREE.MeshStandardMaterial({
+      color: '#475569',
+      emissive: '#fde68a',
+      emissiveIntensity: 0.75,
+      roughness: 0.35
+    });
+    this.lampMesh = new THREE.InstancedMesh(lampGeom, this.lampMat, LAMP_COUNT);
+    this.lampMesh.frustumCulled = false;
+    this.roadsideGroup.add(this.lampMesh);
+
+    this.people = Array.from({ length: PERSON_COUNT }, (_, i) => ({
+      side: i % 2 === 0 ? -1 : 1,
+      xOff: 5.5 + (i % 3) * 0.85,
+      z: -i * 9.5,
+      isJogger: i % 2 === 1,
+      strideSpeed: i % 2 === 1 ? 5.2 : 1.9,
+      phase: Math.random() * Math.PI * 2
+    }));
+
+    this.dogs = Array.from({ length: DOG_COUNT }, (_, i) => ({
+      side: i % 2 === 0 ? -1 : 1,
+      xOff: 5.2 + (i % 2) * 0.7,
+      z: -4 - i * 14.5,
+      phase: Math.random() * Math.PI * 2
+    }));
+
+    this.trees = Array.from({ length: TREE_COUNT }, (_, i) => ({
+      side: i % 2 === 0 ? -1 : 1,
+      xOff: 8.6 + (i % 3) * 1.4,
+      z: -i * 7.2,
+      scale: 0.85 + (i % 4) * 0.18
+    }));
+
+    this.lamps = Array.from({ length: LAMP_COUNT }, (_, i) => ({
+      side: i % 2 === 0 ? -1 : 1,
+      xOff: 4.95,
+      z: -i * 10.0
+    }));
+
+    // Post-Stage 3 Nonexistent Footing: Glowing Step Pads wherever Wiwi (and Lily) step!
+    const padGeom = new THREE.CircleGeometry(0.88, 16);
+    padGeom.rotateX(-Math.PI / 2);
+    this.stepPadMat = new THREE.MeshBasicMaterial({
+      color: '#ffffff',
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    this.stepPadMesh = new THREE.InstancedMesh(padGeom, this.stepPadMat, STEP_PAD_POOL);
+    this.stepPadMesh.frustumCulled = false;
+    this.stepPadMesh.renderOrder = 4;
+    this.scene.add(this.stepPadMesh);
+
+    this.stepPads = Array.from({ length: STEP_PAD_POOL }, () => ({
+      active: false,
+      x: 0,
+      z: 0,
+      life: 0,
+      maxLife: 0.55,
+      color: '#22e6ff'
+    }));
+    this.stepPadCursor = 0;
+    this.wiwiStepTimer = 0;
+    this.lilyStepTimer = 0;
 
     // Laser Dot group
     this.laserGroup = new THREE.Group();
@@ -227,12 +422,12 @@ export class Environment {
     this.laserLight.position.set(0, 0.35, 0);
     this.laserGroup.add(this.laserLight);
 
-    // Subtle pointer beam origin in Act 5 (ordinary peaceful reveal hint)
+    // Subtle pointer beam origin in Act 5
     this.peacefulLight = new THREE.SpotLight('#fff3db', 0, 26, Math.PI / 5, 0.65);
     this.peacefulLight.position.set(2.5, 7.5, 4);
     this.scene.add(this.peacefulLight);
 
-    // True 3D tapered slipstream ribbon connecting the laser dot back toward Wiwi's lane
+    // Curved 3D slipstream ribbon
     const vertCount = (SLIPSTREAM_SEGS + 1) * 2;
     this.slipstreamPositions = new Float32Array(vertCount * 3);
     const slipGeom = new THREE.BufferGeometry();
@@ -258,24 +453,24 @@ export class Environment {
     this.slipstreamLine.frustumCulled = false;
     this.scene.add(this.slipstreamLine);
 
-    // Act 5 ordinary living room props (hidden until final reveal)
+    // Act 5 ordinary living room props
     this.roomGroup = new THREE.Group();
     this.roomGroup.visible = false;
     this.scene.add(this.roomGroup);
 
     const rugGeom = new THREE.PlaneGeometry(5.8, 4.2);
     rugGeom.rotateX(-Math.PI / 2);
-    const rugMat = new THREE.MeshStandardMaterial({ color: '#272c3a', roughness: 0.9 });
-    const rug = new THREE.Mesh(rugGeom, rugMat);
+    const rug = new THREE.Mesh(rugGeom, new THREE.MeshStandardMaterial({ color: '#272c3a', roughness: 0.9 }));
     rug.position.set(0, 0.008, -1.0);
     this.roomGroup.add(rug);
 
-    const wallMat = new THREE.MeshStandardMaterial({ color: '#1b202b', roughness: 0.85 });
-    const baseboard = new THREE.Mesh(new THREE.BoxGeometry(24, 0.28, 0.15), wallMat);
+    const baseboard = new THREE.Mesh(
+      new THREE.BoxGeometry(24, 0.28, 0.15),
+      new THREE.MeshStandardMaterial({ color: '#1b202b', roughness: 0.85 })
+    );
     baseboard.position.set(0, 0.14, -5.2);
     this.roomGroup.add(baseboard);
 
-    // Cozy multi-part sofa (base, back cushions, armrests, throw pillow)
     const sofaMat = new THREE.MeshStandardMaterial({ color: '#242b3b', roughness: 0.85 });
     const cushionMat = new THREE.MeshStandardMaterial({ color: '#2e374b', roughness: 0.8 });
     const sofaBase = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.55, 1.45), sofaMat);
@@ -300,7 +495,6 @@ export class Environment {
     pillow.rotation.z = 0.22;
     this.roomGroup.add(pillow);
 
-    // Wall picture frame behind sofa
     const frame = new THREE.Mesh(
       new THREE.BoxGeometry(1.6, 1.05, 0.08),
       new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.6 })
@@ -308,7 +502,6 @@ export class Environment {
     frame.position.set(-1.6, 2.35, -5.12);
     this.roomGroup.add(frame);
 
-    // Low wooden coffee table on the right
     const tableMat = new THREE.MeshStandardMaterial({ color: '#423328', roughness: 0.75 });
     const tableTop = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.1, 0.95), tableMat);
     tableTop.position.set(2.3, 0.52, -2.0);
@@ -319,7 +512,6 @@ export class Environment {
       this.roomGroup.add(leg);
     }
 
-    // Warm standing floor lamp on right + dust motes
     const pole = new THREE.Mesh(
       new THREE.CylinderGeometry(0.04, 0.05, 3.0, 8),
       new THREE.MeshStandardMaterial({ color: '#475569', metalness: 0.6 })
@@ -348,7 +540,6 @@ export class Environment {
     );
     this.roomGroup.add(this.dustMotes);
 
-    // Subtle red laser-pointer barrel & beam descending onto the floor dot during Step 2
     const pointerMesh = new THREE.Mesh(
       new THREE.CylinderGeometry(0.035, 0.035, 0.32, 10),
       new THREE.MeshStandardMaterial({ color: '#cbd5e1', metalness: 0.85, roughness: 0.2 })
@@ -375,64 +566,242 @@ export class Environment {
     this.laserX = 0;
     this.laserZ = -7.5;
     this.laserTime = 0;
-    this.prevLaserX = 0;
     this.reset();
   }
 
   reset() {
     this.floorScroll = 0;
     this.laserX = 0;
-    this.prevLaserX = 0;
     this.laserZ = -7.2;
     this.laserTime = 0;
+    this.wiwiStepTimer = 0;
+    this.lilyStepTimer = 0;
     this.laserGroup.visible = true;
     this.laserGroup.position.set(0, 0, -7.2);
     this.slipstreamLine.visible = true;
     this.roomGroup.visible = false;
     this.skyMesh.visible = true;
+    this.roadsideGroup.visible = true;
+    this.stepPadMesh.visible = false;
 
-    this.scene.background.set('#05070d');
-    this.scene.fog.color.set('#05070d');
-    this.scene.fog.density = 0.015;
+    for (let i = 0; i < STEP_PAD_POOL; i++) {
+      this.stepPads[i].active = false;
+      this.dummy.position.set(0, -100, 0);
+      this.dummy.scale.setScalar(0.01);
+      this.dummy.updateMatrix();
+      this.stepPadMesh.setMatrixAt(i, this.dummy.matrix);
+    }
+    this.stepPadMesh.instanceMatrix.needsUpdate = true;
+
+    this.scene.background.set('#091326');
+    this.scene.fog.color.set('#091326');
+    this.scene.fog.density = 0.013;
 
     this.floorMat.uniforms.uOffset.value = 0;
     this.floorMat.uniforms.uGridStrength.value = 0.25;
     this.floorMat.uniforms.uBaseColor.value.set('#060912');
     this.floorMat.uniforms.uLineColor.value.set('#22e6ff');
+    this.floorMat.uniforms.uRoadMode.value = 1.0;
+    this.floorMat.uniforms.uPitchBlack.value = 0.0;
+    this.floorMat.uniforms.uVoidFooting.value = 0.0;
     this.floorMat.uniforms.uPeaceful.value = 0.0;
     this.floorMat.uniforms.uLaserX.value = 0.0;
     this.floorMat.uniforms.uAlignment.value = 0.0;
     this.floorMat.uniforms.uBeat.value = 0.0;
 
     this.peacefulLight.intensity = 0;
-    this.hemiLight.intensity = 0.85;
+    this.hemiLight.intensity = 0.95;
   }
 
-  update(worldDt, realDt, state, beatEnergy = 0, catX = 0) {
+  spawnStepPad(x, z, colorHex) {
+    const pad = this.stepPads[this.stepPadCursor];
+    this.stepPadCursor = (this.stepPadCursor + 1) % STEP_PAD_POOL;
+    pad.active = true;
+    pad.x = x;
+    pad.z = z;
+    pad.life = 0;
+    pad.maxLife = 0.55;
+    pad.color = colorHex;
+  }
+
+  updateRoadside(worldDt, speed, isOverclockWhiteSilhouette) {
+    if (isOverclockWhiteSilhouette) {
+      this.personMat.color.set('#ffffff');
+      this.personMat.emissive.set('#ffffff');
+      this.personMat.emissiveIntensity = 0.95;
+      this.dogMat.color.set('#ffffff');
+      this.dogMat.emissive.set('#ffffff');
+      this.dogMat.emissiveIntensity = 0.95;
+      this.treeMat.color.set('#ffffff');
+      this.treeMat.emissive.set('#ffffff');
+      this.treeMat.emissiveIntensity = 0.92;
+      this.lampMat.color.set('#ffffff');
+      this.lampMat.emissive.set('#ffffff');
+      this.lampMat.emissiveIntensity = 0.95;
+    } else {
+      this.personMat.color.set('#cbd5e1');
+      this.personMat.emissive.set('#1e293b');
+      this.personMat.emissiveIntensity = 0.25;
+      this.dogMat.color.set('#b45309');
+      this.dogMat.emissive.set('#451a03');
+      this.dogMat.emissiveIntensity = 0.15;
+      this.treeMat.color.set('#166534');
+      this.treeMat.emissive.set('#052e16');
+      this.treeMat.emissiveIntensity = 0.15;
+      this.lampMat.color.set('#475569');
+      this.lampMat.emissive.set('#fde68a');
+      this.lampMat.emissiveIntensity = 0.75;
+    }
+
+    for (let i = 0; i < PERSON_COUNT; i++) {
+      const p = this.people[i];
+      p.z += (speed + p.strideSpeed) * worldDt;
+      p.phase += worldDt * (p.isJogger ? 9.5 : 4.2);
+      if (p.z > 10) p.z -= PERSON_COUNT * 9.5;
+      const bounce = Math.abs(Math.sin(p.phase)) * (p.isJogger ? 0.16 : 0.05);
+      this.dummy.position.set(p.side * p.xOff, bounce, p.z);
+      this.dummy.rotation.set(p.isJogger ? -0.18 : 0, p.side > 0 ? Math.PI : 0, 0);
+      this.dummy.scale.setScalar(1.0);
+      this.dummy.updateMatrix();
+      this.personMesh.setMatrixAt(i, this.dummy.matrix);
+    }
+    this.personMesh.instanceMatrix.needsUpdate = true;
+
+    for (let i = 0; i < DOG_COUNT; i++) {
+      const d = this.dogs[i];
+      d.z += (speed + 3.2) * worldDt;
+      d.phase += worldDt * 11.0;
+      if (d.z > 10) d.z -= DOG_COUNT * 14.5;
+      const bounce = Math.abs(Math.sin(d.phase)) * 0.11;
+      this.dummy.position.set(d.side * d.xOff, bounce, d.z);
+      this.dummy.rotation.set(0, 0, 0);
+      this.dummy.scale.setScalar(1.0);
+      this.dummy.updateMatrix();
+      this.dogMesh.setMatrixAt(i, this.dummy.matrix);
+    }
+    this.dogMesh.instanceMatrix.needsUpdate = true;
+
+    for (let i = 0; i < TREE_COUNT; i++) {
+      const t = this.trees[i];
+      t.z += speed * worldDt;
+      if (t.z > 10) t.z -= TREE_COUNT * 7.2;
+      this.dummy.position.set(t.side * t.xOff, 0, t.z);
+      this.dummy.rotation.set(0, 0, 0);
+      this.dummy.scale.setScalar(t.scale);
+      this.dummy.updateMatrix();
+      this.treeMesh.setMatrixAt(i, this.dummy.matrix);
+    }
+    this.treeMesh.instanceMatrix.needsUpdate = true;
+
+    for (let i = 0; i < LAMP_COUNT; i++) {
+      const l = this.lamps[i];
+      l.z += speed * worldDt;
+      if (l.z > 10) l.z -= LAMP_COUNT * 10.0;
+      this.dummy.position.set(l.side * l.xOff, 0, l.z);
+      this.dummy.rotation.set(0, 0, 0);
+      this.dummy.scale.setScalar(1.0);
+      this.dummy.updateMatrix();
+      this.lampMesh.setMatrixAt(i, this.dummy.matrix);
+    }
+    this.lampMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  update(worldDt, realDt, state, beatEnergy = 0, cat = null, lily = null) {
     this.floorScroll += state.speed * worldDt;
     this.floorMat.uniforms.uOffset.value = this.floorScroll;
 
-    // Laser weaving target ahead of the cat
+    // Laser weaving target ahead of the cat across the 3 lanes
     this.laserTime += worldDt * (0.9 + state.actIndex * 0.22);
-    const weaveAmp = state.actIndex === 0 ? 0.55 : Math.min(3.6, 1.4 + state.actIndex * 0.85);
+    const weaveAmp = state.actIndex === 0 ? 1.4 : 3.1;
     const targetLaserX =
-      Math.sin(this.laserTime * 1.15) * weaveAmp * 0.7 +
-      Math.sin(this.laserTime * 2.1) * weaveAmp * 0.3;
-    this.prevLaserX = this.laserX;
+      Math.sin(this.laserTime * 1.15) * weaveAmp * 0.75 +
+      Math.sin(this.laserTime * 2.1) * weaveAmp * 0.25;
     this.laserX += (targetLaserX - this.laserX) * (1 - Math.exp(-3.5 * worldDt));
 
-    // Laser stays tantalizingly just out of reach until Act 5
     const desiredZ = -7.0 - state.normalizedSpeed * 3.8 + state.slipstreamAlignment * 0.9;
     this.laserZ += (desiredZ - this.laserZ) * (1 - Math.exp(-4 * realDt));
 
     this.laserGroup.visible = state.runElapsed < 214.0;
     this.laserGroup.position.set(this.laserX, 0, this.laserZ);
 
+    const catX = cat ? cat.x : 0;
     this.floorMat.uniforms.uLaserX.value = this.laserX;
     this.floorMat.uniforms.uAlignment.value = state.slipstreamAlignment;
     this.floorMat.uniforms.uBeat.value = beatEnergy;
 
-    // Update curved 3D volumetric slipstream ribbon connecting laser dot to Wiwi's lane
+    // 3-mode floor state: Stage 1-2 Neighborhood Road -> Stage 3 Pitch Black -> Post-Stage 3 Void Footing
+    this.floorMat.uniforms.uRoadMode.value = !state.worldCollapsed && !state.overclock1Active ? 1.0 : 0.0;
+    this.floorMat.uniforms.uPitchBlack.value = state.overclock1Active ? 1.0 : 0.0;
+    this.floorMat.uniforms.uVoidFooting.value = state.worldCollapsed ? 1.0 : 0.0;
+
+    // Roadside neighborhood people / joggers / dogs / trees (visible until 38s world collapse)
+    if (!state.worldCollapsed && state.phase === 'playing') {
+      this.roadsideGroup.visible = true;
+      this.updateRoadside(worldDt, state.speed, state.overclock1Active);
+    } else if (!state.worldCollapsed && state.phase === 'start') {
+      this.roadsideGroup.visible = true;
+      this.updateRoadside(0, 0, false);
+    } else {
+      this.roadsideGroup.visible = false;
+    }
+
+    // Post-Stage 3 Void Footing: light up wherever Wiwi & Lily step!
+    if (state.worldCollapsed && state.phase === 'playing' && state.speed > 4) {
+      this.stepPadMesh.visible = true;
+      this.wiwiStepTimer += worldDt;
+      if (cat && cat.y < 0.25 && this.wiwiStepTimer >= 0.065) {
+        this.wiwiStepTimer = 0;
+        const padCol = state.stage2BurstActive
+          ? '#fde047'
+          : state.blackRedPillarMode
+            ? '#ff1a35'
+            : state.titanMode
+              ? '#ff2a85'
+              : '#22e6ff';
+        this.spawnStepPad(cat.x, 0.12, padCol);
+      }
+      if (state.tearCount >= 5 && lily && lily.group.visible) {
+        this.lilyStepTimer += worldDt;
+        if (this.lilyStepTimer >= 0.075) {
+          this.lilyStepTimer = 0;
+          this.spawnStepPad(lily.x, lily.z + 0.1, state.overdriveMode ? '#34d399' : '#ff2a4b');
+        }
+      }
+
+      for (let i = 0; i < STEP_PAD_POOL; i++) {
+        const sp = this.stepPads[i];
+        if (!sp.active) {
+          this.dummy.position.set(0, -100, 0);
+          this.dummy.scale.setScalar(0.01);
+          this.dummy.updateMatrix();
+          this.stepPadMesh.setMatrixAt(i, this.dummy.matrix);
+          continue;
+        }
+        sp.life += worldDt;
+        sp.z += state.speed * worldDt;
+        if (sp.life >= sp.maxLife || sp.z > 10) {
+          sp.active = false;
+          this.dummy.scale.setScalar(0.01);
+          this.dummy.updateMatrix();
+          this.stepPadMesh.setMatrixAt(i, this.dummy.matrix);
+          continue;
+        }
+        const rem = 1 - sp.life / sp.maxLife;
+        this.dummy.position.set(sp.x, 0.025, sp.z);
+        this.dummy.rotation.set(0, 0, 0);
+        this.dummy.scale.set(rem * 1.15, 1, rem * 1.35);
+        this.dummy.updateMatrix();
+        this.stepPadMesh.setMatrixAt(i, this.dummy.matrix);
+        this.scratchPadColor.set(sp.color);
+        this.stepPadMesh.setColorAt(i, this.scratchPadColor);
+      }
+      this.stepPadMesh.instanceMatrix.needsUpdate = true;
+      if (this.stepPadMesh.instanceColor) this.stepPadMesh.instanceColor.needsUpdate = true;
+    } else {
+      this.stepPadMesh.visible = false;
+    }
+
+    // Slipstream ribbon
     this.slipstreamLine.visible = this.laserGroup.visible && state.phase === 'playing';
     if (this.slipstreamLine.visible) {
       const pos = this.slipstreamPositions;
@@ -460,53 +829,58 @@ export class Environment {
     this.laserHalo.scale.setScalar(pulse);
     this.laserLight.intensity = 2.1 + beatEnergy * 1.4;
 
-    // Palette evolution by exact timed stage & vibe (zero per-frame allocations)
-    const smooth = 1 - Math.exp(-3.5 * realDt);
-    let targetBg = '#05070d';
+    // Palette & Sky evolution per stage
+    const smooth = 1 - Math.exp(-4.5 * realDt);
+    let targetBg = '#091326';
     let targetLine = '#22e6ff';
-    let targetGrid = 0.25;
-    let targetFog = 0.014;
+    let targetGrid = 0.35;
+    let targetFog = 0.013;
 
+    if (state.overclock1Active) {
+      // Stage 3 Overclock: PITCH BLACK background & sky!
+      targetBg = '#000000';
+      targetLine = '#ffffff';
+      targetGrid = 0.3;
+      targetFog = 0.004;
+      this.skyMesh.visible = false;
+      this.scene.background.set('#000000');
+      this.scene.fog.color.set('#000000');
+      this.scene.fog.density = targetFog;
+      this.floorMat.uniforms.uLineColor.value.set('#22e6ff');
+      return;
+    }
+
+    this.skyMesh.visible = true;
     if (state.stage2BurstActive) {
-      targetBg = '#140c03';
-      targetLine = '#ffbe3b';
-      targetGrid = 0.65;
+      // 2nd Overclock (136s-142s): Retained Yellow Overdrive sky & ground accent
+      targetBg = '#140f02';
+      targetLine = '#fde047';
+      targetGrid = 0.72;
+      targetFog = 0.010;
+    } else if (state.blackRedPillarMode) {
+      // Post-2nd Overclock (142s+): Pitch Black & Crimson Red Void
+      targetBg = '#080104';
+      targetLine = state.overdriveMode ? '#38f3ff' : '#ff1a35';
+      targetGrid = 0.68 + beatEnergy * 0.25;
       targetFog = 0.011;
-    } else if (state.tearCount >= 5) {
-      targetBg = '#16030a';
-      targetLine = state.overdriveMode ? '#38f3ff' : '#ff2a4b';
-      targetGrid = 0.64 + beatEnergy * 0.25;
-      targetFog = 0.012;
-    } else if (state.tearCount >= 4) {
-      targetBg = '#10031a';
-      targetLine = '#e879f9';
-      targetGrid = 0.56 + beatEnergy * 0.22;
+    } else if (state.titanMode) {
+      // Stage 4 Synthwave Titans (62s-136s)
+      targetBg = '#120322';
+      targetLine = '#ff2a85';
+      targetGrid = 0.66 + beatEnergy * 0.22;
       targetFog = 0.011;
-    } else if (state.riftGateMode) {
-      targetBg = '#04191e';
-      targetLine = '#2dd4bf';
-      targetGrid = 0.64 + beatEnergy * 0.24;
-      targetFog = 0.015;
-    } else if (state.tearCount >= 1) {
-      targetBg = '#080416';
+    } else if (state.worldCollapsed) {
+      // Post-Stage 3 Collapsed World (38s-62s)
+      targetBg = '#070314';
       targetLine = '#a855f7';
-      targetGrid = 0.45 + beatEnergy * 0.2;
+      targetGrid = 0.52 + beatEnergy * 0.2;
       targetFog = 0.011;
-    } else if (state.actIndex === 2) {
-      targetBg = '#020308';
-      targetLine = '#7c3aed';
-      targetGrid = 0.24;
-      targetFog = 0.01;
     } else if (state.actIndex === 1) {
-      targetBg = '#050914';
+      // Stage 2 Neighborhood Road Acceleration
+      targetBg = '#0b1932';
       targetLine = '#22e6ff';
-      targetGrid = 0.58;
-      targetFog = 0.013;
-    } else {
-      targetBg = '#05070d';
-      targetLine = '#22e6ff';
-      targetGrid = 0.20 + Math.min(0.25, state.runElapsed * 0.025);
-      targetFog = 0.015;
+      targetGrid = 0.45;
+      targetFog = 0.012;
     }
 
     this.scratchBg.set(targetBg);
@@ -518,24 +892,28 @@ export class Environment {
     this.floorMat.uniforms.uGridStrength.value +=
       (targetGrid - this.floorMat.uniforms.uGridStrength.value) * smooth;
 
-    // Sky dome nebula & horizon evolution
-    this.skyMesh.visible = true;
     this.skyMat.uniforms.uTime.value += worldDt * (0.8 + state.normalizedSpeed * 1.8);
     this.skyMat.uniforms.uSkyHorizon.value.copy(this.scene.background);
     this.skyMat.uniforms.uNebulaColor.value.lerp(this.scratchLine, smooth);
-    this.skyMat.uniforms.uNebulaStrength.value =
-      0.18 + state.tearCount * 0.1 + (state.overdriveMode ? 0.25 : 0) + beatEnergy * 0.15;
+    this.skyMat.uniforms.uNebulaStrength.value = state.worldCollapsed
+      ? 0.22 + state.tearCount * 0.1 + (state.overdriveMode ? 0.22 : 0) + beatEnergy * 0.15
+      : 0.06;
   }
 
   updateEnding(realDt, step) {
     this.slipstreamLine.visible = false;
+    this.roadsideGroup.visible = false;
+    this.stepPadMesh.visible = false;
+    this.floorMat.uniforms.uRoadMode.value = 0.0;
+    this.floorMat.uniforms.uPitchBlack.value = 0.0;
+    this.floorMat.uniforms.uVoidFooting.value = 0.0;
+
     if (step === 0) {
       this.laserGroup.visible = false;
       this.roomGroup.visible = false;
       return;
     }
 
-    // Peaceful quiet living room aesthetic
     this.skyMesh.visible = false;
     this.roomGroup.visible = true;
     this.pointerBeam.visible = step < 3;
@@ -552,7 +930,6 @@ export class Environment {
     this.peacefulLight.intensity += (28 - this.peacefulLight.intensity) * smooth;
     this.hemiLight.intensity += (1.15 - this.hemiLight.intensity) * smooth;
 
-    // Single red laser dot sits peacefully right under/in front of the cats
     this.laserGroup.visible = step >= 1 && step < 3;
     this.laserGroup.position.set(0, 0, -0.85);
     this.laserHalo.scale.setScalar(0.85);

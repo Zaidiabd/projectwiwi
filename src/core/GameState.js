@@ -1,11 +1,13 @@
 const BEST_DIST_KEY = 'project_wiwi_best_dist_v1';
 
+export const LANES = [-3.0, 0.0, 3.0];
 export const RUN_DURATION_SECONDS = 216.0;
 export const TARGET_CATCH_DISTANCE = 23000;
 
 export const TIMELINE = {
   act2Start: 10.0,
-  slowmoAndBurstUnlock: 26.0,
+  stage3Overclock: 25.7,
+  slowmoAndBurstUnlock: 25.7,
   tear1: 38.0,
   tear2: 50.0,
   tear3RiftGates: 62.0,
@@ -18,15 +20,15 @@ export const TIMELINE = {
 };
 
 export const STAGES = [
-  { id: 1, code: 'STAGE I', name: 'THE CHASE', startSec: 0 },
-  { id: 2, code: 'STAGE II', name: 'ACCELERATION', startSec: TIMELINE.act2Start },
-  { id: 3, code: 'STAGE III', name: 'OVERCLOCK SLOW-MO', startSec: TIMELINE.slowmoAndBurstUnlock },
-  { id: 4, code: 'TEAR I', name: 'FABRIC BREACH // CHARGED', startSec: TIMELINE.tear1 },
-  { id: 5, code: 'TEAR II', name: 'DIMENSIONAL SURGE', startSec: TIMELINE.tear2 },
-  { id: 6, code: 'TEAR III', name: 'RIFT PYLON GATES', startSec: TIMELINE.tear3RiftGates },
-  { id: 7, code: 'TEAR IV', name: 'HYPERSTORM RUPTURE', startSec: TIMELINE.tear4 },
-  { id: 8, code: 'BURST II', name: 'STAGE II TEMPORAL BURST', startSec: TIMELINE.burst2Start },
-  { id: 9, code: 'TEAR V', name: 'FINAL COLLAPSE', startSec: TIMELINE.tear5 },
+  { id: 1, code: 'STAGE I', name: 'NEIGHBORHOOD CHASE', startSec: 0 },
+  { id: 2, code: 'STAGE II', name: 'CLOCK GATE // ACCELERATION', startSec: TIMELINE.act2Start },
+  { id: 3, code: 'STAGE III', name: 'OVERCLOCK // PITCH BLACK', startSec: TIMELINE.stage3Overclock },
+  { id: 4, code: 'TEAR I', name: 'WORLD COLLAPSE // VOID FOOTING', startSec: TIMELINE.tear1 },
+  { id: 5, code: 'TEAR II', name: 'DEBRIS MAELSTROM', startSec: TIMELINE.tear2 },
+  { id: 6, code: 'STAGE IV', name: 'SYNTHWAVE TITANS', startSec: TIMELINE.tear3RiftGates },
+  { id: 7, code: 'TEAR IV', name: 'TITAN HAND BARRAGE', startSec: TIMELINE.tear4 },
+  { id: 8, code: 'OVERCLOCK II', name: '2ND OVERCLOCK // LIGHT PILLARS', startSec: TIMELINE.burst2Start },
+  { id: 9, code: 'TEAR V', name: 'BLACK-RED PILLARS // LILY CHASE', startSec: TIMELINE.tear5 },
   { id: 10, code: 'OVERDRIVE', name: 'DUAL OVERDRIVE', startSec: TIMELINE.overdrivePowerup },
   { id: 11, code: 'ACT V', name: 'THE LASER REVEAL', startSec: TIMELINE.finish }
 ];
@@ -70,6 +72,11 @@ export class GameState {
 
     this.boostEnergy = 1.0;
     this.isBoosting = false;
+    this.boostUnlocked = false;
+    this.overclock1Active = false;
+    this.worldCollapsed = false;
+    this.titanMode = false;
+    this.blackRedPillarMode = false;
 
     this.burstUnlocked = false;
     this.burstCharge = 0.0;
@@ -79,7 +86,7 @@ export class GameState {
     this.stage2BurstActive = false;
 
     this.bodyChargeLevel = 0; // 0 before 38s, 1..5 escalating at each tear
-    this.riftGateMode = false; // lane-locked Dimensional Rift Pylon gates starting at 62s
+    this.riftGateMode = false; // lane-locked hazards & Titans from 62s+
     this.overdriveMode = false; // Final overdrive speed surge starting at 179s+
 
     this.grazeCount = 0;
@@ -132,8 +139,15 @@ export class GameState {
       this.stageSplits[STAGES[nextStage].code] = t;
     }
 
-    // Unlock Space Temporal Burst at 26s
-    if (!this.burstUnlocked && t >= TIMELINE.slowmoAndBurstUnlock) {
+    // Booster unlocks in Stage 2 (10s), locked during Stage 3 Overclock (25.7s-38s), re-enabled at 38s+
+    this.boostUnlocked = t >= TIMELINE.act2Start && !(t >= TIMELINE.stage3Overclock && t < TIMELINE.tear1);
+    this.overclock1Active = t >= TIMELINE.stage3Overclock && t < TIMELINE.tear1;
+    this.worldCollapsed = t >= TIMELINE.tear1;
+    this.titanMode = t >= TIMELINE.tear3RiftGates && t < TIMELINE.burst2Start;
+    this.blackRedPillarMode = t >= TIMELINE.tear5;
+
+    // Manual Temporal Burst unlocks after Stage 3 Overclock concludes (38s+)
+    if (!this.burstUnlocked && t >= TIMELINE.tear1) {
       this.burstUnlocked = true;
       this.burstCharge = 1.0;
     }

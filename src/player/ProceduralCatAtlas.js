@@ -342,11 +342,65 @@ function drawBritishHead(ctx, hx, hy, opts = {}) {
   ctx.restore();
 }
 
+function drawHindLimbWithPad(ctx, hipX, hipY, kneeX, kneeY, pawX, pawY, width = 9.5, showPad = false, padScale = 1.0) {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Dark ink contour along thigh -> hock -> paw
+  ctx.strokeStyle = PALETTE.ink;
+  ctx.lineWidth = width + 4.4;
+  ctx.beginPath();
+  ctx.moveTo(hipX, hipY);
+  ctx.quadraticCurveTo(kneeX, kneeY, pawX, pawY);
+  ctx.stroke();
+
+  // Plush fur fill
+  ctx.strokeStyle = PALETTE.fur;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(hipX, hipY);
+  ctx.quadraticCurveTo(kneeX, kneeY, pawX, pawY);
+  ctx.stroke();
+
+  // Shaded inner hock contour for rear depth
+  ctx.strokeStyle = PALETTE.furShade;
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  ctx.moveTo(hipX, hipY + 2);
+  ctx.quadraticCurveTo(kneeX, kneeY + 1, pawX, pawY - 1);
+  ctx.stroke();
+
+  // Soft white-silver sock paw
+  const pr = Math.max(5.0, width * 0.58) * padScale;
+  ctx.fillStyle = PALETTE.sock;
+  ctx.strokeStyle = PALETTE.ink;
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  ctx.ellipse(pawX, pawY, pr * 1.15, pr * 0.85, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Upturned pink/rose cat toe beans visible during push-off kickback
+  if (showPad) {
+    ctx.fillStyle = '#e5a4b8';
+    ctx.beginPath();
+    ctx.ellipse(pawX, pawY + 0.8, pr * 0.42, pr * 0.34, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (const bx of [-pr * 0.42, 0, pr * 0.42]) {
+      ctx.beginPath();
+      ctx.arc(pawX + bx, pawY - pr * 0.34, pr * 0.17, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 function drawRearOrAngledFrame(ctx, cx, groundY, clipName, phase, t) {
   const s = phase * Math.PI * 2;
   const isTurnLeft = clipName === 'run_left';
   const isTurnRight = clipName === 'run_right';
-  const yaw = isTurnLeft ? -0.75 : isTurnRight ? 0.75 : 0;
+  const yaw = isTurnLeft ? -0.78 : isTurnRight ? 0.78 : 0;
 
   const isRun = clipName.startsWith('run');
   const isSprint = clipName === 'sprint' || clipName === 'overclock' || clipName === 'slowmo';
@@ -356,149 +410,114 @@ function drawRearOrAngledFrame(ctx, cx, groundY, clipName, phase, t) {
   const isFall = clipName === 'fall';
   const isLand = clipName === 'land';
 
-  // Munchkin proportions: lower, plumper body close to the floor with short stubby legs
-  let bodyY = groundY - 28;
-  let bodyRx = 23.5;
-  let bodyRy = 19.5;
-  let headX = cx + yaw * 14;
-  let headY = groundY - 52;
-  let earPerk = isAlert ? Math.sin(Math.min(1, t * 1.4) * Math.PI * 0.5) : isSprint ? -0.22 : 0.1;
+  // Forward-crouched quadruped Munchkin proportions (haunches close to camera, shoulders & head tucked low ahead)
+  let haunchY = groundY - 21;
+  let haunchRx = 22.0;
+  let haunchRy = 15.5;
+  let shoulderX = cx + yaw * 11;
+  let shoulderY = groundY - 25;
+  let shoulderRx = 18.0;
+  let shoulderRy = 13.0;
+  let headX = cx + yaw * 17;
+  let headY = groundY - 37;
+  let earPerk = isAlert ? Math.sin(Math.min(1, t * 1.4) * Math.PI * 0.5) : isSprint ? -0.25 : 0.1;
 
   if (clipName === 'idle') {
     const breath = Math.sin(s);
-    bodyY = groundY - 27 + breath * 1.3;
-    headY = groundY - 51 + breath * 1.5;
+    haunchY = groundY - 20 + breath * 1.1;
+    shoulderY = groundY - 25 + breath * 1.2;
+    headY = groundY - 38 + breath * 1.4;
   } else if (isAlert) {
     const snap = Math.min(1, t * 2.0);
-    bodyY = groundY - 27 - snap * 2.5;
-    headY = groundY - 51 - snap * 5.0;
+    haunchY = groundY - 20 - snap * 2.0;
+    shoulderY = groundY - 25 - snap * 3.5;
+    headY = groundY - 38 - snap * 5.0;
   } else if (isRun) {
+    // Smooth bounding quadruped gait with subtle pitch & lateral compression
     const stride = Math.sin(s);
-    const bounce = Math.abs(Math.cos(s)) * 4.2;
-    bodyY = groundY - 28 - bounce;
-    headY = groundY - 52 - bounce * 0.85;
-    bodyRx = 23.5 + Math.abs(yaw) * 7;
-    bodyRy = 19 - Math.abs(stride) * 1.4;
+    const bounce = Math.abs(Math.cos(s)) * 4.5;
+    haunchY = groundY - 21 - bounce * 0.85;
+    shoulderY = groundY - 25 - Math.abs(Math.sin(s + 0.35)) * 4.0;
+    headY = shoulderY - 12 + stride * 1.2;
+    haunchRx = 22.5 + Math.abs(yaw) * 4.5;
+    haunchRy = 15.0 + Math.abs(stride) * 1.3;
   } else if (isSprint) {
-    const gallop = Math.sin(s);
-    const lift = Math.max(0, Math.sin(s + 0.4)) * 7;
-    bodyY = groundY - 29 - lift;
-    headY = groundY - 50 - lift * 0.7;
-    bodyRx = 24 + (isOverclock ? 2 : 0);
-    bodyRy = 17.5 + gallop * 1.8;
+    // Low aerodynamic pounce-gallop: spine arches & stretches while head drops low toward the dot
+    const arc = Math.sin(s);
+    const lift = Math.max(0, Math.sin(s + 0.35)) * 7.5;
+    haunchY = groundY - 20 - lift * 0.85;
+    shoulderY = groundY - 24 - lift * 0.65;
+    headY = shoulderY - 9.5 + arc * 1.5;
+    haunchRx = 23.0 + (isOverclock ? 1.5 : 0);
+    haunchRy = 14.2 + arc * 1.6;
   } else if (isJump) {
-    const crouch = t < 0.25 ? (0.25 - t) * 32 : 0;
-    const rise = t >= 0.25 ? Math.sin(((t - 0.25) / 0.75) * Math.PI * 0.5) * 24 : 0;
-    bodyY = groundY - 27 + crouch - rise;
-    headY = groundY - 51 + crouch * 0.9 - rise * 1.06;
-    bodyRy = t < 0.25 ? 16 : 22;
+    const crouch = t < 0.25 ? (0.25 - t) * 28 : 0;
+    const rise = t >= 0.25 ? Math.sin(((t - 0.25) / 0.75) * Math.PI * 0.5) * 22 : 0;
+    haunchY = groundY - 20 + crouch - rise;
+    shoulderY = groundY - 26 + crouch * 0.8 - rise * 1.08;
+    headY = shoulderY - 11;
+    haunchRy = t < 0.25 ? 13 : 17;
   } else if (isFall) {
     const sway = Math.sin(s) * 2;
-    bodyY = groundY - 46 + sway;
-    headY = groundY - 69 + sway;
-    bodyRy = 20;
+    haunchY = groundY - 38 + sway;
+    shoulderY = groundY - 43 + sway;
+    headY = shoulderY - 11;
+    haunchRy = 16;
   } else if (isLand) {
     const squash = Math.sin(t * Math.PI);
-    bodyY = groundY - 26 + squash * 7;
-    headY = groundY - 50 + squash * 8;
-    bodyRx = 24.5 + squash * 4;
-    bodyRy = 18 - squash * 3.5;
+    haunchY = groundY - 19 + squash * 5.5;
+    shoulderY = groundY - 24 + squash * 6.5;
+    headY = shoulderY - 10 + squash * 3.0;
+    haunchRx = 24 + squash * 3.5;
+    haunchRy = 14 - squash * 2.5;
   }
 
   const strideA = Math.sin(s);
   const strideB = Math.sin(s + Math.PI);
 
-  // Plush tail
-  const tailBaseX = cx - yaw * 12;
-  const tailBaseY = bodyY + 8;
-  let tailPts;
-  if (clipName === 'idle' || isAlert) {
-    const sw = Math.sin(s) * 15;
-    tailPts = [
-      tailBaseX + 14 + sw * 0.4, tailBaseY + 10,
-      tailBaseX + 32 + sw * 0.8, tailBaseY + 4 - (isAlert ? 12 : 0),
-      tailBaseX + 38 + sw, tailBaseY - 12 - (isAlert ? 14 : 0)
-    ];
-  } else if (isJump || isFall) {
-    const whip = Math.sin(s) * 9;
-    tailPts = [
-      tailBaseX + 8, tailBaseY + 18,
-      tailBaseX + 18 + whip, tailBaseY + 26,
-      tailBaseX + 26 + whip, tailBaseY + 16
-    ];
-  } else {
-    const whip = Math.sin(s + 0.8) * (isSprint ? 18 : 14);
-    const trailDir = yaw !== 0 ? -Math.sign(yaw) : 1;
-    tailPts = [
-      tailBaseX + trailDir * 15 + whip * 0.4, tailBaseY + 2,
-      tailBaseX + trailDir * 28 + whip * 0.7, tailBaseY - 12,
-      tailBaseX + trailDir * 39 + whip, tailBaseY - 24
-    ];
-  }
+  // 1. Forelimbs reaching ahead from the forward shoulders
+  const fReachA = isSprint ? strideB * 10 : isJump ? -7 : strideB * 7;
+  const fReachB = isSprint ? strideA * 10 : isJump ? -5 : strideA * 7;
+  const fLiftA = Math.max(0, strideB) * (isSprint ? 8 : 5);
+  const fLiftB = Math.max(0, strideA) * (isSprint ? 8 : 5);
+  drawShortLimb(
+    ctx,
+    shoulderX - 10, shoulderY + 5,
+    shoulderX - 13 + fReachA * 0.3, shoulderY + 13,
+    shoulderX - 11 + fReachA * 0.4, groundY - (isJump || isFall ? 14 : 5) - fLiftA,
+    8.2
+  );
+  drawShortLimb(
+    ctx,
+    shoulderX + 10, shoulderY + 5,
+    shoulderX + 13 + fReachB * 0.3, shoulderY + 13,
+    shoulderX + 11 + fReachB * 0.4, groundY - (isJump || isFall ? 13 : 5) - fLiftB,
+    8.2
+  );
 
-  // Short stubby front limbs peeking on turns / sprint
-  if (Math.abs(yaw) > 0.1 || isSprint || isJump || isFall) {
-    const reach = isSprint ? strideA * 10 : isJump ? -8 : strideA * 7;
-    const fx = cx + yaw * 22;
-    drawShortLimb(ctx, fx - 6, bodyY + 6, fx - 10 + reach * 0.3, bodyY + 14, fx - 7 + reach, groundY - (isJump || isFall ? 14 : 4), 8.5);
-    drawShortLimb(ctx, fx + 6, bodyY + 6, fx + 9 - reach * 0.3, bodyY + 14, fx + 7 - reach * 0.6, groundY - (isJump || isFall ? 12 : 4), 8.5);
-  }
-
-  // Plump round British Shorthair torso
+  // 2. Forward chest / shoulders cylinder overlapping ahead
   ctx.save();
-  ctx.translate(cx, bodyY);
-  ctx.rotate(yaw * 0.2);
-  ctx.fillStyle = makePlushGrad(ctx, 0, 0, bodyRx);
+  ctx.translate(shoulderX, shoulderY);
+  ctx.fillStyle = makePlushGrad(ctx, 0, 0, shoulderRx);
   ctx.strokeStyle = PALETTE.ink;
-  ctx.lineWidth = 2.8;
+  ctx.lineWidth = 2.4;
   ctx.beginPath();
-  ctx.ellipse(0, 0, bodyRx, bodyRy, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, shoulderRx, shoulderRy, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // Subtle shaded lower belly
-  ctx.fillStyle = PALETTE.furShade;
-  ctx.beginPath();
-  ctx.ellipse(0, bodyRy * 0.35, bodyRx * 0.78, bodyRy * 0.45, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Pale-silver chest puff on turns
   if (Math.abs(yaw) > 0.35) {
     ctx.fillStyle = PALETTE.sock;
     ctx.beginPath();
-    ctx.moveTo(yaw * 17, -5);
-    ctx.lineTo(yaw * 24, 2);
-    ctx.lineTo(yaw * 16, 7);
+    ctx.moveTo(yaw * 13, -3);
+    ctx.lineTo(yaw * 20, 3);
+    ctx.lineTo(yaw * 12, 7);
     ctx.closePath();
     ctx.fill();
   }
-
-  // Plush rim highlight
-  ctx.strokeStyle = isOverclock ? PALETTE.rimBright : PALETTE.rim;
-  ctx.lineWidth = 2.1;
-  ctx.beginPath();
-  ctx.ellipse(0, -2, bodyRx - 2.5, bodyRy - 3, 0, Math.PI * 1.1, Math.PI * 1.9);
-  ctx.stroke();
   ctx.restore();
 
-  // Short stubby Munchkin hind legs!
-  if (clipName === 'idle' || isAlert || isLand) {
-    const squat = isLand ? 3 : 0;
-    drawShortLimb(ctx, cx - 10, bodyY + 9, cx - 12, groundY - 9 + squat, cx - 10, groundY - 4, 9.5);
-    drawShortLimb(ctx, cx + 10, bodyY + 9, cx + 12, groundY - 9 + squat, cx + 10, groundY - 4, 9.5);
-  } else if (isJump || isFall) {
-    drawShortLimb(ctx, cx - 10, bodyY + 10, cx - 14, bodyY + 18, cx - 12, bodyY + 24, 9.5);
-    drawShortLimb(ctx, cx + 10, bodyY + 10, cx + 14, bodyY + 18, cx + 12, bodyY + 24, 9.5);
-  } else {
-    const kickL = isSprint ? strideA * 9 : strideA * 7;
-    const kickR = isSprint ? strideB * 9 : strideB * 7;
-    const liftL = Math.max(0, -strideA) * (isSprint ? 10 : 7);
-    const liftR = Math.max(0, -strideB) * (isSprint ? 10 : 7);
-    drawShortLimb(ctx, cx - 10 - yaw * 4, bodyY + 9, cx - 13 - yaw * 4, bodyY + 16, cx - 11 + kickL * 0.35, groundY - 4 - liftL, 9.5);
-    drawShortLimb(ctx, cx + 10 - yaw * 4, bodyY + 9, cx + 13 - yaw * 4, bodyY + 16, cx + 11 + kickR * 0.35, groundY - 4 - liftR, 9.5);
-  }
-
-  // Round British Shorthair Head
+  // 3. Lowered British Shorthair Head connected cleanly to shoulders (never floating like a snowman)
   drawBritishHead(ctx, headX, headY, {
     yaw,
     earPerk,
@@ -506,7 +525,94 @@ function drawRearOrAngledFrame(ctx, cx, groundY, clipName, phase, t) {
     overclock: isOverclock
   });
 
-  // Plush tail over haunches
+  // 4. Rounded Foreground Haunches & Spine Bridge (closest to camera -> renders over shoulder base!)
+  ctx.save();
+  ctx.translate(cx, haunchY);
+  ctx.rotate(yaw * 0.16);
+  ctx.fillStyle = makePlushGrad(ctx, 0, -2, haunchRx);
+  ctx.strokeStyle = PALETTE.ink;
+  ctx.lineWidth = 2.8;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, haunchRx, haunchRy, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Muscular left & right rear thigh contours
+  ctx.fillStyle = PALETTE.furShade;
+  ctx.beginPath();
+  ctx.ellipse(-10.5, 4.5, 8.0, 6.2, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(10.5, 4.5, 8.0, 6.2, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Crisp top dorsal fur rim along back/rump
+  ctx.strokeStyle = isOverclock ? PALETTE.rimBright : PALETTE.rim;
+  ctx.lineWidth = 2.1;
+  ctx.beginPath();
+  ctx.ellipse(0, -2.5, haunchRx - 3.0, haunchRy - 3.0, 0, Math.PI * 1.12, Math.PI * 1.88);
+  ctx.stroke();
+  ctx.restore();
+
+  // 5. Short stubby Munchkin hind legs with hock bend & upturned paw pads during push-off!
+  if (clipName === 'idle' || isAlert || isLand) {
+    const squat = isLand ? 3 : 0;
+    drawHindLimbWithPad(ctx, cx - 10, haunchY + 6, cx - 13, groundY - 8 + squat, cx - 10, groundY - 4, 9.5, false, 1.0);
+    drawHindLimbWithPad(ctx, cx + 10, haunchY + 6, cx + 13, groundY - 8 + squat, cx + 10, groundY - 4, 9.5, false, 1.0);
+  } else if (isJump || isFall) {
+    drawHindLimbWithPad(ctx, cx - 10, haunchY + 7, cx - 15, haunchY + 16, cx - 12, haunchY + 21, 9.5, true, 1.08);
+    drawHindLimbWithPad(ctx, cx + 10, haunchY + 7, cx + 15, haunchY + 16, cx + 12, haunchY + 21, 9.5, true, 1.08);
+  } else {
+    // Phase-alternating hind kickback (push-off shows upturned toe beans toward camera!)
+    const kickBackL = Math.max(0, strideA);
+    const kickBackR = Math.max(0, strideB);
+    const liftL = kickBackL * (isSprint ? 10 : 7) + Math.max(0, -strideA) * 3;
+    const liftR = kickBackR * (isSprint ? 10 : 7) + Math.max(0, -strideB) * 3;
+    drawHindLimbWithPad(
+      ctx,
+      cx - 10 - yaw * 3, haunchY + 6,
+      cx - 14 - yaw * 3, haunchY + 12 - liftL * 0.25,
+      cx - 11 + kickBackL * 2.5, groundY - 4 - liftL,
+      9.5,
+      kickBackL > 0.35,
+      1.0 + kickBackL * 0.16
+    );
+    drawHindLimbWithPad(
+      ctx,
+      cx + 10 - yaw * 3, haunchY + 6,
+      cx + 14 - yaw * 3, haunchY + 12 - liftR * 0.25,
+      cx + 11 + kickBackR * 2.5, groundY - 4 - liftR,
+      9.5,
+      kickBackR > 0.35,
+      1.0 + kickBackR * 0.16
+    );
+  }
+
+  // 6. Centered Sacrum-Anchored S-Curve Tail
+  const tailBaseX = cx - yaw * 5;
+  const tailBaseY = haunchY - 2;
+  let tailPts;
+  if (clipName === 'idle' || isAlert) {
+    const sw = Math.sin(s) * 14;
+    tailPts = [
+      tailBaseX + sw * 0.3, tailBaseY - 12,
+      tailBaseX + 18 + sw * 0.7, tailBaseY - 24 - (isAlert ? 8 : 0),
+      tailBaseX + 26 + sw, tailBaseY - 34 - (isAlert ? 10 : 0)
+    ];
+  } else if (isJump || isFall) {
+    const whip = Math.sin(s) * 8;
+    tailPts = [
+      tailBaseX + whip * 0.3, tailBaseY + 6,
+      tailBaseX + 14 + whip, tailBaseY + 12,
+      tailBaseX + 22 + whip, tailBaseY + 2
+    ];
+  } else {
+    const whip = Math.sin(s) * (isSprint ? 14 : 11);
+    const trailBias = yaw !== 0 ? -Math.sign(yaw) * 16 : 0;
+    tailPts = [
+      tailBaseX + trailBias * 0.3 + whip * 0.35, tailBaseY - 8,
+      tailBaseX + trailBias * 0.7 + whip * 0.85, tailBaseY - 22,
+      tailBaseX + trailBias + whip, tailBaseY - 34
+    ];
+  }
   drawPlushTail(ctx, tailBaseX, tailBaseY, tailPts, isOverclock);
 }
 

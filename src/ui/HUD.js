@@ -171,28 +171,34 @@ export class HUD {
       this.speedCardEl.style.transform = 'translate(0px, 0px)';
     }
 
-    const boostPct = Math.round(state.boostEnergy * 100);
-    this.boostPctEl.textContent = `${boostPct}%`;
+    const boostPct = state.boostUnlocked ? Math.round(state.boostEnergy * 100) : 0;
+    this.boostPctEl.textContent = state.boostUnlocked ? `${boostPct}%` : 'LOCKED';
     this.boostFillEl.style.width = `${boostPct}%`;
 
     if (state.stage2BurstActive) {
-      this.shearLabelEl.textContent = 'STAGE II TEMPORAL BURST';
+      this.shearLabelEl.textContent = '2ND OVERCLOCK (YELLOW PILLARS)';
       const remPct = Math.max(0, Math.round(((142 - state.runElapsed) / 6.0) * 100));
       this.shearPctEl.textContent = `${remPct}%`;
       this.shearFillEl.style.width = `${remPct}%`;
-      this.shearFillEl.style.background = 'linear-gradient(90deg, #ffbe3b, #ff2a85)';
+      this.shearFillEl.style.background = 'linear-gradient(90deg, #fde047, #ffbe3b)';
+    } else if (state.overclock1Active) {
+      this.shearLabelEl.textContent = 'STAGE 3 OVERCLOCK ACTIVE';
+      const remPct = Math.max(0, Math.round(((38 - state.runElapsed) / 12.3) * 100));
+      this.shearPctEl.textContent = `${remPct}%`;
+      this.shearFillEl.style.width = `${remPct}%`;
+      this.shearFillEl.style.background = 'linear-gradient(90deg, #22e6ff, #ff2a85)';
     } else if (state.burstActive) {
       this.shearLabelEl.textContent = state.burstStage === 2 ? 'STAGE II BURST ACTIVE' : 'TEMPORAL BURST ACTIVE';
       const remPct = Math.round((state.burstTimer / 2.4) * 100);
       this.shearPctEl.textContent = `${remPct}%`;
       this.shearFillEl.style.width = `${remPct}%`;
       this.shearFillEl.style.background = state.burstStage === 2
-        ? 'linear-gradient(90deg, #ffbe3b, #ff2a85)'
+        ? 'linear-gradient(90deg, #fde047, #ff2a85)'
         : 'linear-gradient(90deg, #22e6ff, #3b82f6)';
     } else if (!state.burstUnlocked) {
-      this.shearLabelEl.textContent = 'TEMPORAL BURST LOCKED';
-      const unlockPct = Math.min(100, Math.round((state.runElapsed / 26.0) * 100));
-      this.shearPctEl.textContent = `${Math.max(0, Math.ceil(26 - state.runElapsed))}s`;
+      this.shearLabelEl.textContent = state.actIndex === 0 ? 'BOOST & BURST LOCKED' : 'OVERCLOCK AT 25.7s';
+      const unlockPct = Math.min(100, Math.round((state.runElapsed / 38.0) * 100));
+      this.shearPctEl.textContent = `${Math.max(0, Math.ceil(38 - state.runElapsed))}s`;
       this.shearFillEl.style.width = `${unlockPct}%`;
       this.shearFillEl.style.background = 'rgba(148, 163, 184, 0.45)';
     } else {
