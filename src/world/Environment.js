@@ -127,7 +127,14 @@ function mergeSimpleParts(parts) {
 
   for (const part of parts) {
     const g = part.geom;
+    if (part.scale) g.scale(part.scale[0], part.scale[1], part.scale[2]);
+    if (part.rot) {
+      if (part.rot[0]) g.rotateX(part.rot[0]);
+      if (part.rot[1]) g.rotateY(part.rot[1]);
+      if (part.rot[2]) g.rotateZ(part.rot[2]);
+    }
     if (part.pos) g.translate(part.pos[0], part.pos[1], part.pos[2]);
+    g.computeVertexNormals();
     const pos = g.attributes.position.array;
     const norm = g.attributes.normal.array;
     posArrays.push(pos);
@@ -282,10 +289,12 @@ export class Environment {
     this.scene.add(this.roadsideGroup);
 
     const personGeom = mergeSimpleParts([
-      { geom: new THREE.CylinderGeometry(0.18, 0.22, 0.85, 8), pos: [0, 0.72, 0] },
-      { geom: new THREE.SphereGeometry(0.17, 8, 6), pos: [0, 1.32, 0] },
-      { geom: new THREE.BoxGeometry(0.13, 0.45, 0.14), pos: [-0.1, 0.22, 0] },
-      { geom: new THREE.BoxGeometry(0.13, 0.45, 0.14), pos: [0.1, 0.22, 0] }
+      { geom: new THREE.CapsuleGeometry(0.17, 0.42, 6, 12), pos: [0, 0.84, 0], scale: [1.1, 1.0, 0.78] },
+      { geom: new THREE.SphereGeometry(0.16, 12, 10), pos: [0, 1.36, 0] },
+      { geom: new THREE.CapsuleGeometry(0.055, 0.34, 4, 8), pos: [-0.24, 0.82, 0.06], rot: [0.35, 0, 0.14] },
+      { geom: new THREE.CapsuleGeometry(0.055, 0.34, 4, 8), pos: [0.24, 0.82, -0.06], rot: [-0.35, 0, -0.14] },
+      { geom: new THREE.CapsuleGeometry(0.072, 0.38, 4, 8), pos: [-0.1, 0.28, -0.08], rot: [-0.28, 0, 0] },
+      { geom: new THREE.CapsuleGeometry(0.072, 0.38, 4, 8), pos: [0.1, 0.28, 0.08], rot: [0.28, 0, 0] }
     ]);
     this.personMat = new THREE.MeshStandardMaterial({
       color: '#cbd5e1',
@@ -297,10 +306,17 @@ export class Environment {
     this.roadsideGroup.add(this.personMesh);
 
     const dogGeom = mergeSimpleParts([
-      { geom: new THREE.BoxGeometry(0.28, 0.26, 0.62), pos: [0, 0.34, 0] },
-      { geom: new THREE.BoxGeometry(0.20, 0.20, 0.24), pos: [0, 0.50, -0.32] },
-      { geom: new THREE.BoxGeometry(0.08, 0.22, 0.08), pos: [-0.09, 0.11, -0.2] },
-      { geom: new THREE.BoxGeometry(0.08, 0.22, 0.08), pos: [0.09, 0.11, 0.2] }
+      { geom: new THREE.CapsuleGeometry(0.14, 0.38, 6, 12), pos: [0, 0.34, 0], rot: [Math.PI / 2, 0, 0] },
+      { geom: new THREE.CapsuleGeometry(0.09, 0.16, 5, 10), pos: [0, 0.46, -0.24], rot: [0.65, 0, 0] },
+      { geom: new THREE.SphereGeometry(0.115, 10, 8), pos: [0, 0.55, -0.32] },
+      { geom: new THREE.CapsuleGeometry(0.055, 0.10, 4, 8), pos: [0, 0.52, -0.43], rot: [Math.PI / 2, 0, 0] },
+      { geom: new THREE.ConeGeometry(0.042, 0.12, 6), pos: [-0.065, 0.66, -0.30], rot: [0.2, 0, 0.15] },
+      { geom: new THREE.ConeGeometry(0.042, 0.12, 6), pos: [0.065, 0.66, -0.30], rot: [0.2, 0, -0.15] },
+      { geom: new THREE.CapsuleGeometry(0.032, 0.20, 4, 8), pos: [0, 0.48, 0.30], rot: [-0.75, 0, 0] },
+      { geom: new THREE.CapsuleGeometry(0.038, 0.20, 4, 8), pos: [-0.085, 0.14, -0.19], rot: [0.22, 0, 0] },
+      { geom: new THREE.CapsuleGeometry(0.038, 0.20, 4, 8), pos: [0.085, 0.14, -0.19], rot: [-0.22, 0, 0] },
+      { geom: new THREE.CapsuleGeometry(0.042, 0.20, 4, 8), pos: [-0.085, 0.14, 0.19], rot: [-0.22, 0, 0] },
+      { geom: new THREE.CapsuleGeometry(0.042, 0.20, 4, 8), pos: [0.085, 0.14, 0.19], rot: [0.22, 0, 0] }
     ]);
     this.dogMat = new THREE.MeshStandardMaterial({
       color: '#b45309',
@@ -312,8 +328,10 @@ export class Environment {
     this.roadsideGroup.add(this.dogMesh);
 
     const treeGeom = mergeSimpleParts([
-      { geom: new THREE.CylinderGeometry(0.16, 0.22, 1.4, 6), pos: [0, 0.7, 0] },
-      { geom: new THREE.ConeGeometry(1.15, 2.5, 7), pos: [0, 2.35, 0] }
+      { geom: new THREE.CylinderGeometry(0.14, 0.25, 1.45, 12), pos: [0, 0.72, 0] },
+      { geom: new THREE.IcosahedronGeometry(1.08, 2), pos: [0, 2.05, 0], scale: [1.12, 0.88, 1.12] },
+      { geom: new THREE.IcosahedronGeometry(0.84, 2), pos: [-0.36, 2.68, 0.18], scale: [1.0, 0.92, 1.0] },
+      { geom: new THREE.IcosahedronGeometry(0.76, 2), pos: [0.32, 2.86, -0.16], scale: [0.95, 1.05, 0.95] }
     ]);
     this.treeMat = new THREE.MeshStandardMaterial({
       color: '#15803d',
@@ -325,8 +343,9 @@ export class Environment {
     this.roadsideGroup.add(this.treeMesh);
 
     const lampGeom = mergeSimpleParts([
-      { geom: new THREE.CylinderGeometry(0.06, 0.09, 4.2, 6), pos: [0, 2.1, 0] },
-      { geom: new THREE.BoxGeometry(0.55, 0.12, 0.24), pos: [0, 4.15, 0] }
+      { geom: new THREE.CylinderGeometry(0.05, 0.10, 4.2, 12), pos: [0, 2.1, 0] },
+      { geom: new THREE.CapsuleGeometry(0.055, 0.55, 5, 10), pos: [0, 4.18, 0], rot: [0, 0, Math.PI / 2] },
+      { geom: new THREE.SphereGeometry(0.14, 12, 10), pos: [0, 4.08, 0], scale: [1.5, 0.65, 1.0] }
     ]);
     this.lampMat = new THREE.MeshStandardMaterial({
       color: '#475569',

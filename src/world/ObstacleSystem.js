@@ -14,12 +14,17 @@ function mergeParts(parts) {
 
   for (const part of parts) {
     const g = part.geom;
+    if (part.scale) {
+      g.scale(part.scale[0], part.scale[1], part.scale[2]);
+    }
     if (part.rot) {
       g.rotateX(part.rot[0] || 0);
       g.rotateY(part.rot[1] || 0);
       g.rotateZ(part.rot[2] || 0);
     }
     if (part.pos) g.translate(part.pos[0], part.pos[1], part.pos[2]);
+    g.computeVertexNormals();
+
     const pos = g.attributes.position.array;
     const norm = g.attributes.normal.array;
     posArrays.push(pos);
@@ -50,6 +55,409 @@ function mergeParts(parts) {
   return merged;
 }
 
+/**
+ * Builds a sleek, rounded aerodynamic fastback sports car geometry using
+ * beveled ExtrudeGeometry curves + smooth cylindrical wheels & capsule mirrors.
+ */
+function createSculptedCarGeometry() {
+  // Side-silhouette Bezier profile of a modern aerodynamic sports coupe (Z = length, Y = height)
+  const bodyShape = new THREE.Shape();
+  bodyShape.moveTo(-1.55, 0.16);
+  bodyShape.quadraticCurveTo(-1.62, 0.42, -1.32, 0.52); // Curved front bumper & nose
+  bodyShape.quadraticCurveTo(-0.85, 0.58, -0.55, 0.62); // Swept hood
+  bodyShape.bezierCurveTo(-0.25, 0.98, 0.15, 1.06, 0.58, 1.02); // Curved windshield & fastback roof
+  bodyShape.quadraticCurveTo(1.12, 0.94, 1.48, 0.64); // Fastback rear glass & deck
+  bodyShape.quadraticCurveTo(1.62, 0.45, 1.50, 0.18); // Rear diffuser curve
+  bodyShape.lineTo(-1.55, 0.16);
+
+  const extrudeOpts = {
+    depth: 1.32,
+    bevelEnabled: true,
+    bevelSegments: 5,
+    steps: 1,
+    bevelSize: 0.16,
+    bevelThickness: 0.18,
+    curveSegments: 16
+  };
+  const bodyGeom = new THREE.ExtrudeGeometry(bodyShape, extrudeOpts);
+  // Center extrusion along X and align Z along forward/back
+  bodyGeom.rotateY(Math.PI / 2);
+  bodyGeom.translate(-0.66, 0, 0);
+
+  const parts = [{ geom: bodyGeom }];
+
+  // Sculpted 20-segment rounded wheels with hub arches
+  for (const wx of [-0.78, 0.78]) {
+    for (const wz of [-0.95, 0.95]) {
+      parts.push({
+        geom: new THREE.CylinderGeometry(0.28, 0.28, 0.24, 20),
+        rot: [0, 0, Math.PI / 2],
+        pos: [wx, 0.28, wz]
+      });
+      // Rounded fender flare
+      parts.push({
+        geom: new THREE.SphereGeometry(0.32, 14, 10),
+        scale: [0.45, 0.9, 1.15],
+        pos: [wx * 0.94, 0.34, wz]
+      });
+    }
+  }
+  return mergeParts(parts);
+}
+
+/**
+ * Builds an organic sport-bike + leaning rider out of smooth Torus tires,
+ * beveled aerodynamic fairing, and CapsuleGeometry rider anatomy.
+ */
+function createSculptedBikeGeometry() {
+  const parts = [
+    // Front & rear rounded motorcycle tires
+    { geom: new THREE.TorusGeometry(0.28, 0.09, 12, 22), rot: [0, Math.PI / 2, 0], pos: [0, 0.30, 0.66] },
+    { geom: new THREE.TorusGeometry(0.29, 0.10, 12, 22), rot: [0, Math.PI / 2, 0], pos: [0, 0.31, -0.66] },
+    // Sculpted aerodynamic teardrop fuel tank & front cowl
+    { geom: new THREE.CapsuleGeometry(0.21, 0.85, 8, 16), rot: [Math.PI * 0.42, 0, 0], pos: [0, 0.56, 0.08] },
+    { geom: new THREE.ConeGeometry(0.22, 0.55, 16), rot: [Math.PI * 0.58, 0, 0], pos: [0, 0.64, 0.62] },
+    // Rider torso (smooth capsule leaning into the wind)
+    { geom: new THREE.CapsuleGeometry(0.18, 0.46, 8, 16), rot: [0.58, 0, 0], pos: [0, 0.94, -0.05] },
+    // Rider helmet (smooth sphere + aerodynamic tail)
+    { geom: new THREE.SphereGeometry(0.19, 16, 14), scale: [0.92, 1.0, 1.18], pos: [0, 1.28, 0.20] },
+    // Rider arms & legs (capsules hugging tank)
+    { geom: new THREE.CapsuleGeometry(0.065, 0.38, 6, 10), rot: [0.95, 0, -0.18], pos: [-0.17, 0.96, 0.24] },
+    { geom: new THREE.CapsuleGeometry(0.065, 0.38, 6, 10), rot: [0.95, 0, 0.18], pos: [0.17, 0.96, 0.24] },
+    { geom: new THREE.CapsuleGeometry(0.08, 0.42, 6, 10), rot: [0.4, 0, 0], pos: [-0.18, 0.62, -0.18] },
+    { geom: new THREE.CapsuleGeometry(0.08, 0.42, 6, 10), rot: [0.4, 0, 0], pos: [0.18, 0.62, -0.18] }
+  ];
+  return mergeParts(parts);
+}
+
+/**
+ * Builds an organic fractured crag/asteroid land chunk by displacing a
+ * subdivided IcosahedronGeometry and recomputing smooth normals.
+ */
+function createSculptedLandChunkGeometry() {
+  const geom = new THREE.IcosahedronGeometry(1.05, 2);
+  const pos = geom.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const n =
+      Math.sin(x * 3.7 + z * 2.3) * 0.18 +
+      Math.cos(y * 4.1 - x * 2.9) * 0.14 +
+      Math.sin(z * 5.2 + y * 3.1) * 0.09;
+    // Flatten underside slightly like a torn road/crust island
+    const ySquash = y < 0 ? 0.48 : 0.72;
+    pos.setXYZ(i, x * (1.15 + n), y * ySquash + n * 0.35, z * (1.22 - n * 0.5));
+  }
+  geom.computeVertexNormals();
+  return geom;
+}
+
+/**
+ * Builds an organic multi-crown uprooted tree geometry.
+ */
+function createSculptedTreeDebrisGeometry() {
+  return mergeParts([
+    { geom: new THREE.CylinderGeometry(0.12, 0.26, 1.55, 12), pos: [0, -0.35, 0] },
+    { geom: new THREE.IcosahedronGeometry(0.78, 2), scale: [1.05, 1.25, 1.05], pos: [0, 0.72, 0] },
+    { geom: new THREE.IcosahedronGeometry(0.58, 2), pos: [-0.38, 0.55, 0.22] },
+    { geom: new THREE.IcosahedronGeometry(0.55, 2), pos: [0.36, 0.62, -0.18] }
+  ]);
+}
+
+/**
+ * Builds an anatomical V-tapered Synthwave Titan upper body + sculpted head
+ * using smooth Capsules, Spheres, and tapered Cylinders (zero boxy cubes).
+ */
+function createSculptedTitanGeometry() {
+  return mergeParts([
+    // Tapered waist & ribcage
+    { geom: new THREE.CylinderGeometry(2.85, 1.65, 5.2, 20), scale: [1.18, 1.0, 0.68], pos: [0, 6.2, 0] },
+    // Sculpted pectoral chest plates
+    { geom: new THREE.SphereGeometry(1.95, 18, 14), scale: [1.15, 0.85, 0.68], pos: [-1.35, 9.2, 0.55] },
+    { geom: new THREE.SphereGeometry(1.95, 18, 14), scale: [1.15, 0.85, 0.68], pos: [1.35, 9.2, 0.55] },
+    // Rounded deltoid shoulder capsules & upper traps
+    { geom: new THREE.CapsuleGeometry(1.45, 2.2, 10, 18), rot: [0, 0, Math.PI / 2], pos: [0, 10.6, 0] },
+    { geom: new THREE.SphereGeometry(1.75, 18, 14), scale: [1.1, 0.95, 0.85], pos: [-3.85, 10.5, 0] },
+    { geom: new THREE.SphereGeometry(1.75, 18, 14), scale: [1.1, 0.95, 0.85], pos: [3.85, 10.5, 0] },
+    // Upper arms descending from deltoids
+    { geom: new THREE.CapsuleGeometry(1.05, 3.6, 8, 16), rot: [0.15, 0, 0.18], pos: [-4.4, 7.6, 0.3] },
+    { geom: new THREE.CapsuleGeometry(1.05, 3.6, 8, 16), rot: [0.15, 0, -0.18], pos: [4.4, 7.6, 0.3] },
+    // Muscular neck column
+    { geom: new THREE.CylinderGeometry(0.95, 1.25, 1.8, 16), pos: [0, 12.0, 0.1] },
+    // Sculpted anatomical cranium & tapered jawline
+    { geom: new THREE.SphereGeometry(1.95, 22, 18), scale: [0.92, 1.28, 1.02], pos: [0, 14.3, 0.2] },
+    { geom: new THREE.ConeGeometry(1.45, 1.8, 16), rot: [Math.PI, 0, 0], scale: [0.85, 1.0, 0.85], pos: [0, 13.0, 0.35] }
+  ]);
+}
+
+/**
+ * Builds an organic, anatomical 5-fingered giant hand with rounded palm,
+ * knuckle domes, 3-segment curved capsule fingers + thumb, and tapered forearm.
+ */
+function createSculptedHandGeometry() {
+  const parts = [
+    // Anatomical palm & dorsal hand arch (smooth scaled sphere + capsule bridge)
+    { geom: new THREE.SphereGeometry(2.25, 20, 16), scale: [1.12, 0.36, 0.82], pos: [0, 0.78, 0] },
+    // Tapered muscular wrist & forearm descending from above
+    { geom: new THREE.CylinderGeometry(1.48, 1.12, 6.4, 20), rot: [-0.14, 0, 0], pos: [0, 4.1, -0.55] }
+  ];
+
+  // 4 sculpted articulated fingers (proximal + distal curved capsules + knuckle spheres)
+  const fingerX = [-1.75, -0.60, 0.60, 1.75];
+  const fingerLen = [1.05, 1.25, 1.22, 0.98];
+  const fingerSplay = [-0.14, -0.04, 0.04, 0.14];
+
+  for (let i = 0; i < 4; i++) {
+    const fx = fingerX[i];
+    const fl = fingerLen[i];
+    const splay = fingerSplay[i];
+    // Knuckle dome
+    parts.push({
+      geom: new THREE.SphereGeometry(0.46, 14, 12),
+      pos: [fx, 0.82, 1.35]
+    });
+    // Proximal phalanx
+    parts.push({
+      geom: new THREE.CapsuleGeometry(0.36, fl * 0.85, 8, 14),
+      rot: [1.32, splay, 0],
+      pos: [fx + splay * 1.1, 0.68, 2.05]
+    });
+    // Distal fingertip claw curving into the ground
+    parts.push({
+      geom: new THREE.CapsuleGeometry(0.28, fl * 0.65, 8, 14),
+      rot: [0.82, splay, 0],
+      pos: [fx + splay * 1.8, 0.36, 2.78]
+    });
+  }
+
+  // Opposable thumb on outer side
+  parts.push({
+    geom: new THREE.CapsuleGeometry(0.38, 0.95, 8, 14),
+    rot: [1.1, -0.55, -0.3],
+    pos: [-2.45, 0.58, 0.85]
+  });
+
+  return mergeParts(parts);
+}
+
+// ---------------------------------------------------------------------------
+// Custom GLSL Shaders for Synthwave Titans & High-Energy Plasma Light Beams
+// ---------------------------------------------------------------------------
+
+const SYNTHWAVE_VERTEX = /* glsl */ `
+  varying vec3 vNormal;
+  varying vec3 vViewDir;
+  varying vec3 vWorldPos;
+
+  void main() {
+    vec4 instancePos = vec4(position, 1.0);
+    #ifdef USE_INSTANCING
+      instancePos = instanceMatrix * instancePos;
+    #endif
+    vec4 wp = modelMatrix * instancePos;
+    vWorldPos = wp.xyz;
+    vec4 mvPos = viewMatrix * wp;
+    vViewDir = normalize(-mvPos.xyz);
+    mat3 nMat = normalMatrix;
+    #ifdef USE_INSTANCING
+      nMat = normalMatrix * mat3(instanceMatrix);
+    #endif
+    vNormal = normalize(nMat * normal);
+    gl_Position = projectionMatrix * mvPos;
+  }
+`;
+
+const SYNTHWAVE_FRAGMENT = /* glsl */ `
+  uniform float uTime;
+  uniform vec3 uCoreColor;
+  uniform vec3 uRimColorA;
+  uniform vec3 uRimColorB;
+  varying vec3 vNormal;
+  varying vec3 vViewDir;
+  varying vec3 vWorldPos;
+
+  void main() {
+    float ndv = clamp( abs(dot(normalize(vNormal), normalize(vViewDir))), 0.0, 1.0 );
+    float fresnel = pow(1.0 - ndv, 2.2);
+
+    // Smooth synthwave laser contour lines along Y & Z (no triangle wireframe!)
+    float scanY = smoothstep(0.84, 0.98, sin(vWorldPos.y * 5.5 - uTime * 3.5) * 0.5 + 0.5);
+    float scanX = smoothstep(0.88, 0.99, sin(vWorldPos.x * 4.0) * 0.5 + 0.5);
+    float gridGlow = clamp(scanY * 0.55 + scanX * 0.35, 0.0, 1.0);
+
+    vec3 rimCol = mix(uRimColorA, uRimColorB, sin(vWorldPos.y * 0.4 + uTime * 2.0) * 0.5 + 0.5);
+    vec3 col = uCoreColor + rimCol * (fresnel * 1.65 + gridGlow * 0.48);
+    gl_FragColor = vec4(col, 0.96);
+  }
+`;
+
+const BEAM_VERTEX = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  varying vec3 vViewDir;
+
+  void main() {
+    vUv = uv;
+    vec4 instancePos = vec4(position, 1.0);
+    #ifdef USE_INSTANCING
+      instancePos = instanceMatrix * instancePos;
+    #endif
+    vec4 mvPos = modelViewMatrix * instancePos;
+    vViewDir = normalize(-mvPos.xyz);
+    mat3 nMat = normalMatrix;
+    #ifdef USE_INSTANCING
+      nMat = normalMatrix * mat3(instanceMatrix);
+    #endif
+    vNormal = normalize(nMat * normal);
+    gl_Position = projectionMatrix * mvPos;
+  }
+`;
+
+const BEAM_CORE_FRAGMENT = /* glsl */ `
+  uniform float uTime;
+  uniform float uDarkMode; // 0.0 = Blazing Yellow High-Energy Beam (136s-142s), 1.0 = Pitch-Black Beam w/ Red Fresnel Rim (142s+)
+
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  varying vec3 vViewDir;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+      f.y
+    );
+  }
+
+  void main() {
+    float ndv = clamp(abs(dot(normalize(vNormal), normalize(vViewDir))), 0.0, 1.0);
+    float angle = vUv.x * 6.2831853;
+
+    // High-velocity upward plasma surges & helical electric filaments
+    float n1 = noise(vec2(vUv.x * 6.0, vUv.y * 14.0 - uTime * 7.5));
+    float n2 = noise(vec2(vUv.x * 12.0 - uTime * 2.0, vUv.y * 28.0 - uTime * 14.0));
+    float plasma = n1 * 0.6 + n2 * 0.4;
+
+    float helix1 = smoothstep(0.72, 0.98, sin(angle * 2.0 + vUv.y * 24.0 - uTime * 16.0) * 0.5 + 0.5);
+    float helix2 = smoothstep(0.76, 0.99, sin(-angle * 3.0 + vUv.y * 32.0 - uTime * 20.0) * 0.5 + 0.5);
+    float arc = clamp(helix1 + helix2, 0.0, 1.0);
+
+    // Intense ground contact hotspot at the base of the beam
+    float baseFlare = exp(-vUv.y * 5.5) * 0.85;
+    float topFade = smoothstep(1.0, 0.82, vUv.y);
+
+    if (uDarkMode < 0.5) {
+      // 2ND OVERCLOCK (136s-142s): Blazing Yellow-Gold High-Energy Orbital Laser Beam!
+      float coreHot = pow(ndv, 1.15);
+      float edgeSoft = smoothstep(0.02, 0.48, ndv);
+      vec3 goldenOuter = vec3(1.0, 0.68, 0.08);
+      vec3 yellowMid = vec3(1.0, 0.93, 0.32);
+      vec3 whiteHot = vec3(1.0, 1.0, 0.92);
+
+      vec3 col = mix(goldenOuter, yellowMid, coreHot);
+      col = mix(col, whiteHot, pow(coreHot, 2.4) + arc * 0.65 + baseFlare);
+      col *= (1.15 + plasma * 0.55);
+
+      float alpha = clamp((edgeSoft * 0.88 + arc * 0.45 + baseFlare) * topFade, 0.0, 1.0);
+      gl_FragColor = vec4(col, alpha);
+    } else {
+      // POST-OVERCLOCK (142s+): Pitch-Black Void Core with Razor-Sharp Glowing Crimson-Red Outline & Voltage!
+      // Center of cylinder (ndv > 0.36) is pure light-absorbing pitch black; silhouette edge (ndv < 0.42) is blazing red!
+      float rimBand = smoothstep(0.52, 0.14, ndv) * smoothstep(0.01, 0.14, ndv);
+      float outerTrim = smoothstep(0.0, 0.10, ndv);
+      vec3 blackCore = vec3(0.01, 0.002, 0.015);
+      vec3 redOutline = mix(vec3(1.0, 0.05, 0.18), vec3(1.0, 0.45, 0.52), rimBand * 0.7 + arc * 0.5);
+
+      float electricVein = arc * smoothstep(0.15, 0.75, 1.0 - ndv) * 0.85;
+      float outlineStrength = clamp(rimBand * 1.55 + electricVein + baseFlare * 0.8, 0.0, 1.0);
+      vec3 col = mix(blackCore, redOutline * (1.25 + plasma * 0.45), outlineStrength);
+
+      float alpha = clamp(outerTrim * 0.97 * topFade, 0.0, 1.0);
+      gl_FragColor = vec4(col, alpha);
+    }
+  }
+`;
+
+const BEAM_CORONA_FRAGMENT = /* glsl */ `
+  uniform float uTime;
+  uniform float uDarkMode;
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  varying vec3 vViewDir;
+
+  void main() {
+    float ndv = clamp(abs(dot(normalize(vNormal), normalize(vViewDir))), 0.0, 1.0);
+    float angle = vUv.x * 6.2831853;
+
+    // Helical electric lightning bolts spiraling around the outer beam sheath
+    float boltA = smoothstep(0.86, 0.995, sin(angle * 3.0 + vUv.y * 36.0 - uTime * 22.0) * 0.5 + 0.5);
+    float boltB = smoothstep(0.88, 0.996, sin(-angle * 4.0 + vUv.y * 44.0 - uTime * 17.0) * 0.5 + 0.5);
+    float bolts = clamp(boltA + boltB, 0.0, 1.0);
+
+    float halo = pow(ndv, 1.8) * 0.42;
+    float baseBurst = exp(-vUv.y * 7.0) * 0.65;
+    float topFade = smoothstep(1.0, 0.75, vUv.y);
+
+    vec3 glowCol = uDarkMode < 0.5
+      ? mix(vec3(1.0, 0.78, 0.12), vec3(1.0, 0.98, 0.75), bolts)
+      : mix(vec3(1.0, 0.06, 0.20), vec3(1.0, 0.55, 0.62), bolts);
+
+    float alpha = clamp((halo + bolts * 0.85 + baseBurst) * topFade, 0.0, 1.0);
+    gl_FragColor = vec4(glowCol * 1.35, alpha);
+  }
+`;
+
+const BEAM_FLARE_VERTEX = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    vec4 instancePos = vec4(position, 1.0);
+    #ifdef USE_INSTANCING
+      instancePos = instanceMatrix * instancePos;
+    #endif
+    gl_Position = projectionMatrix * modelViewMatrix * instancePos;
+  }
+`;
+
+const BEAM_FLARE_FRAGMENT = /* glsl */ `
+  uniform float uTime;
+  uniform float uDarkMode;
+  varying vec2 vUv;
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    float r = length(p);
+    if (r > 1.0) discard;
+    float ang = atan(p.y, p.x);
+
+    // Concentric expanding energy shock rings + radial electric arcs on the floor
+    float core = exp(-r * r * 7.5);
+    float ring = exp(-pow((r - fract(uTime * 2.2) * 0.85) * 9.0, 2.0)) * (1.0 - r);
+    float rays = smoothstep(0.75, 0.98, sin(ang * 8.0 + r * 14.0 - uTime * 16.0) * 0.5 + 0.5) * (1.0 - r);
+
+    vec3 col = uDarkMode < 0.5
+      ? mix(vec3(1.0, 0.78, 0.15), vec3(1.0, 1.0, 0.88), core + rays)
+      : mix(vec3(0.95, 0.05, 0.18), vec3(1.0, 0.55, 0.62), ring + rays);
+
+    // Dark-mode ground flare keeps a pitch-black center pupil surrounded by a blazing red shock ring
+    if (uDarkMode >= 0.5) {
+      float darkCenter = smoothstep(0.32, 0.12, r);
+      col = mix(col, vec3(0.01, 0.0, 0.02), darkCenter);
+    }
+
+    float alpha = clamp((core * 0.95 + ring * 0.85 + rays * 0.65) * (1.0 - r), 0.0, 1.0);
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
 const VEHICLE_COLORS = ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#e2e8f0'];
 
 export class ObstacleSystem {
@@ -63,39 +471,25 @@ export class ObstacleSystem {
     this.color = new THREE.Color();
 
     // ---------------------------------------------------------
-    // 1. Stage 2 & Stage 3 Overclock: 3-Lane Cars & Bikes
+    // 1. Stage 2 & Stage 3 Overclock: Sculpted Aerodynamic Cars & Sport-Bikes
     // ---------------------------------------------------------
-    const carGeom = mergeParts([
-      { geom: new THREE.BoxGeometry(1.75, 0.52, 3.1), pos: [0, 0.42, 0] },
-      { geom: new THREE.BoxGeometry(1.42, 0.46, 1.65), pos: [0, 0.90, -0.05] },
-      { geom: new THREE.BoxGeometry(0.24, 0.34, 0.48), pos: [-0.82, 0.20, 0.95] },
-      { geom: new THREE.BoxGeometry(0.24, 0.34, 0.48), pos: [0.82, 0.20, 0.95] },
-      { geom: new THREE.BoxGeometry(0.24, 0.34, 0.48), pos: [-0.82, 0.20, -0.95] },
-      { geom: new THREE.BoxGeometry(0.24, 0.34, 0.48), pos: [0.82, 0.20, -0.95] }
-    ]);
+    const carGeom = createSculptedCarGeometry();
     this.carMat = new THREE.MeshStandardMaterial({
       color: '#ffffff',
       emissive: '#000000',
-      roughness: 0.35,
-      metalness: 0.65
+      roughness: 0.24,
+      metalness: 0.72
     });
     this.carMesh = new THREE.InstancedMesh(carGeom, this.carMat, MAX_LANE_VEHICLES);
     this.carMesh.frustumCulled = false;
     this.scene.add(this.carMesh);
 
-    const bikeGeom = mergeParts([
-      { geom: new THREE.BoxGeometry(0.42, 0.48, 1.85), pos: [0, 0.45, 0] },
-      { geom: new THREE.CylinderGeometry(0.32, 0.32, 0.16, 10), rot: [0, 0, Math.PI / 2], pos: [0, 0.32, 0.68] },
-      { geom: new THREE.CylinderGeometry(0.32, 0.32, 0.16, 10), rot: [0, 0, Math.PI / 2], pos: [0, 0.32, -0.68] },
-      // Rider leaning forward
-      { geom: new THREE.BoxGeometry(0.42, 0.56, 0.36), rot: [-0.4, 0, 0], pos: [0, 0.92, 0.05] },
-      { geom: new THREE.SphereGeometry(0.20, 8, 6), pos: [0, 1.30, -0.08] }
-    ]);
+    const bikeGeom = createSculptedBikeGeometry();
     this.bikeMat = new THREE.MeshStandardMaterial({
       color: '#ffffff',
       emissive: '#000000',
-      roughness: 0.35,
-      metalness: 0.6
+      roughness: 0.26,
+      metalness: 0.68
     });
     this.bikeMesh = new THREE.InstancedMesh(bikeGeom, this.bikeMat, MAX_LANE_VEHICLES);
     this.bikeMesh.frustumCulled = false;
@@ -120,29 +514,25 @@ export class ObstacleSystem {
     }));
 
     // ---------------------------------------------------------
-    // 2. Post-Stage 3 World Collapse (38s-62s): Flying Land, Cars & Trees
+    // 2. Post-Stage 3 World Collapse (38s-62s): Sculpted Crag Land Slabs, Cars & Multi-Crown Trees
     // ---------------------------------------------------------
-    const landGeom = new THREE.DodecahedronGeometry(0.95, 0);
-    landGeom.scale(1.15, 0.55, 1.3);
+    const landGeom = createSculptedLandChunkGeometry();
     this.landMat = new THREE.MeshStandardMaterial({
       color: '#334155',
       emissive: '#9333ea',
       emissiveIntensity: 0.6,
-      roughness: 0.5
+      roughness: 0.55
     });
     this.landMesh = new THREE.InstancedMesh(landGeom, this.landMat, MAX_LANE_DEBRIS);
     this.landMesh.frustumCulled = false;
     this.scene.add(this.landMesh);
 
-    const treeDebrisGeom = mergeParts([
-      { geom: new THREE.CylinderGeometry(0.16, 0.24, 1.5, 6), pos: [0, -0.3, 0] },
-      { geom: new THREE.ConeGeometry(0.95, 1.9, 6), pos: [0, 0.85, 0] }
-    ]);
+    const treeDebrisGeom = createSculptedTreeDebrisGeometry();
     this.treeDebrisMat = new THREE.MeshStandardMaterial({
       color: '#065f46',
       emissive: '#22e6ff',
       emissiveIntensity: 0.45,
-      roughness: 0.6
+      roughness: 0.65
     });
     this.treeDebrisMesh = new THREE.InstancedMesh(treeDebrisGeom, this.treeDebrisMat, MAX_LANE_DEBRIS);
     this.treeDebrisMesh.frustumCulled = false;
@@ -152,7 +542,7 @@ export class ObstacleSystem {
       lane: (i * 2) % 3,
       x: LANES[(i * 2) % 3],
       z: -48 - i * 20,
-      kind: i % 3, // 0 = land slab, 1 = car, 2 = tree
+      kind: i % 3, // 0 = crag land slab, 1 = car, 2 = tree
       rx: Math.random() * Math.PI,
       ry: Math.random() * Math.PI,
       spin: 1.5 + Math.random() * 1.6,
@@ -162,44 +552,41 @@ export class ObstacleSystem {
     }));
 
     // ---------------------------------------------------------
-    // 3. Stage 4 (62s-136s): Giant Interdimensional Synthwave Beings & 2-Lane Hand Stomps
+    // 3. Stage 4 (62s-136s): Anatomical Synthwave Humanoid Beings & 5-Fingered Clawed Hands
     // ---------------------------------------------------------
     this.titanGroup = new THREE.Group();
     this.titanGroup.visible = false;
     this.scene.add(this.titanGroup);
 
-    const titanMat = new THREE.MeshBasicMaterial({
-      color: '#120524',
-      wireframe: false
-    });
-    const titanWireMat = new THREE.MeshBasicMaterial({
-      color: '#ff2a85',
-      wireframe: true,
-      transparent: true,
-      opacity: 0.65
+    this.titanShaderMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uCoreColor: { value: new THREE.Color('#0c031c') },
+        uRimColorA: { value: new THREE.Color('#ff2a85') },
+        uRimColorB: { value: new THREE.Color('#38f3ff') }
+      },
+      vertexShader: SYNTHWAVE_VERTEX,
+      fragmentShader: SYNTHWAVE_FRAGMENT,
+      transparent: true
     });
     const eyeMat = new THREE.MeshBasicMaterial({ color: '#38f3ff' });
-
-    const titanBodyGeom = mergeParts([
-      { geom: new THREE.BoxGeometry(5.5, 8.5, 3.2), pos: [0, 7.5, 0] }, // Torso
-      { geom: new THREE.BoxGeometry(9.0, 2.2, 3.0), pos: [0, 11.2, 0] }, // Shoulders
-      { geom: new THREE.OctahedronGeometry(2.2, 0), pos: [0, 14.6, 0] } // Head
-    ]);
+    const titanBodyGeom = createSculptedTitanGeometry();
 
     this.titans = [];
     for (const side of [-1, 1]) {
       const fig = new THREE.Group();
-      const bodySolid = new THREE.Mesh(titanBodyGeom, titanMat);
-      const bodyWire = new THREE.Mesh(titanBodyGeom, titanWireMat);
-      fig.add(bodySolid);
-      fig.add(bodyWire);
+      const bodyMesh = new THREE.Mesh(titanBodyGeom, this.titanShaderMat);
+      fig.add(bodyMesh);
 
-      // Piercing glowing synthwave eyes
-      const eyeGeom = new THREE.BoxGeometry(0.65, 0.28, 0.4);
+      // Wrap-around glowing synthwave visor eyes
+      const eyeGeom = new THREE.CapsuleGeometry(0.18, 0.62, 6, 12);
+      eyeGeom.rotateZ(Math.PI / 2);
       const eyeL = new THREE.Mesh(eyeGeom, eyeMat);
-      eyeL.position.set(-0.65, 14.8, 1.85);
+      eyeL.position.set(-0.68, 14.4, 1.92);
+      eyeL.rotation.y = -0.25;
       const eyeR = new THREE.Mesh(eyeGeom, eyeMat);
-      eyeR.position.set(0.65, 14.8, 1.85);
+      eyeR.position.set(0.68, 14.4, 1.92);
+      eyeR.rotation.y = 0.25;
       fig.add(eyeL, eyeR);
 
       fig.position.set(side * 10.5, -1.5, -34);
@@ -208,41 +595,15 @@ export class ObstacleSystem {
       this.titans.push(fig);
     }
 
-    // Colossal Hand Mesh covering 2 lanes (5.2m span!)
-    const handGeom = mergeParts([
-      { geom: new THREE.BoxGeometry(4.8, 1.15, 2.8), pos: [0, 0.65, 0] }, // Palm
-      { geom: new THREE.BoxGeometry(0.85, 0.9, 1.8), pos: [-1.8, 0.5, 2.0] }, // Finger 1
-      { geom: new THREE.BoxGeometry(0.85, 0.9, 2.1), pos: [-0.6, 0.5, 2.15] }, // Finger 2
-      { geom: new THREE.BoxGeometry(0.85, 0.9, 2.1), pos: [0.6, 0.5, 2.15] }, // Finger 3
-      { geom: new THREE.BoxGeometry(0.85, 0.9, 1.8), pos: [1.8, 0.5, 2.0] }, // Finger 4
-      { geom: new THREE.CylinderGeometry(1.4, 1.6, 6.0, 8), pos: [0, 4.1, -0.4] } // Wrist / Forearm descending from Titan!
-    ]);
-    this.handMat = new THREE.MeshStandardMaterial({
-      color: '#1b0636',
-      emissive: '#ff2a85',
-      emissiveIntensity: 1.05,
-      roughness: 0.25,
-      metalness: 0.8
-    });
-    this.handMesh = new THREE.InstancedMesh(handGeom, this.handMat, MAX_HAND_STOMPS);
+    const handGeom = createSculptedHandGeometry();
+    this.handMesh = new THREE.InstancedMesh(handGeom, this.titanShaderMat, MAX_HAND_STOMPS);
     this.handMesh.frustumCulled = false;
     this.scene.add(this.handMesh);
 
-    // Wireframe neon rim overlay on the stomping hands
-    this.handWireMat = new THREE.MeshBasicMaterial({
-      color: '#38f3ff',
-      wireframe: true,
-      transparent: true,
-      opacity: 0.55
-    });
-    this.handWireMesh = new THREE.InstancedMesh(handGeom, this.handWireMat, MAX_HAND_STOMPS);
-    this.handWireMesh.frustumCulled = false;
-    this.scene.add(this.handWireMesh);
-
-    // 2-lane floor hazard warning zone under each hand stomp
-    const handZoneGeom = new THREE.PlaneGeometry(5.6, 5.2);
+    // 2-lane floor impact pulse disc under each hand stomp
+    const handZoneGeom = new THREE.CircleGeometry(2.85, 28);
     handZoneGeom.rotateX(-Math.PI / 2);
-    handZoneGeom.translate(0, 0.03, 0);
+    handZoneGeom.translate(0, 0.03, 0.6);
     this.handZoneMat = new THREE.MeshBasicMaterial({
       color: '#ff2a85',
       transparent: true,
@@ -259,7 +620,7 @@ export class ObstacleSystem {
       const isLeft = i % 2 === 0;
       return {
         isLeft,
-        x: isLeft ? -1.5 : 1.5, // Left covers Lanes [0, 1] -> Exit = Lane 2 (+3.0); Right covers [1, 2] -> Exit = Lane 0 (-3.0)
+        x: isLeft ? -1.5 : 1.5,
         coveredLanes: isLeft ? [0, 1] : [1, 2],
         exitLane: isLeft ? 2 : 0,
         z: -48 - i * 34,
@@ -271,46 +632,65 @@ export class ObstacleSystem {
 
     // ---------------------------------------------------------
     // 4. 2nd Overclock (136s-142s) & Post-Overclock (142s+):
-    //    Slowed Yellow Light Pillars -> Black Pillars w/ Red Outline + Electric Charge Rings!
+    //    Volumetric High-Energy Plasma Beam -> Pitch-Black Void Beam w/ Red Fresnel Rim!
     // ---------------------------------------------------------
-    const pillarGeom = new THREE.CylinderGeometry(0.68, 0.78, 11.0, 10);
-    pillarGeom.translate(0, 5.5, 0);
-    this.pillarCoreMat = new THREE.MeshStandardMaterial({
-      color: '#fde047',
-      emissive: '#ffbe3b',
-      emissiveIntensity: 1.5,
-      roughness: 0.15,
-      metalness: 0.4,
+    const beamCoreGeom = new THREE.CylinderGeometry(0.54, 0.54, 24.0, 28, 1, true);
+    beamCoreGeom.translate(0, 12.0, 0);
+    this.beamCoreMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uDarkMode: { value: 0.0 }
+      },
+      vertexShader: BEAM_VERTEX,
+      fragmentShader: BEAM_CORE_FRAGMENT,
       transparent: true,
-      opacity: 0.94
+      depthWrite: false,
+      side: THREE.DoubleSide
     });
-    this.pillarCoreMesh = new THREE.InstancedMesh(pillarGeom, this.pillarCoreMat, MAX_PILLARS);
+    this.pillarCoreMesh = new THREE.InstancedMesh(beamCoreGeom, this.beamCoreMat, MAX_PILLARS);
     this.pillarCoreMesh.frustumCulled = false;
+    this.pillarCoreMesh.renderOrder = 6;
     this.scene.add(this.pillarCoreMesh);
 
-    const outlineGeom = new THREE.CylinderGeometry(0.78, 0.88, 11.05, 8);
-    outlineGeom.translate(0, 5.52, 0);
-    this.pillarOutlineMat = new THREE.MeshBasicMaterial({
-      color: '#fde047',
-      wireframe: true,
+    // Outer additive plasma corona & helical lightning sheath
+    const beamCoronaGeom = new THREE.CylinderGeometry(0.96, 0.96, 24.0, 28, 1, true);
+    beamCoronaGeom.translate(0, 12.0, 0);
+    this.beamCoronaMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uDarkMode: { value: 0.0 }
+      },
+      vertexShader: BEAM_VERTEX,
+      fragmentShader: BEAM_CORONA_FRAGMENT,
       transparent: true,
-      opacity: 0.92
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
     });
-    this.pillarOutlineMesh = new THREE.InstancedMesh(outlineGeom, this.pillarOutlineMat, MAX_PILLARS);
+    this.pillarOutlineMesh = new THREE.InstancedMesh(beamCoronaGeom, this.beamCoronaMat, MAX_PILLARS);
     this.pillarOutlineMesh.frustumCulled = false;
+    this.pillarOutlineMesh.renderOrder = 7;
     this.scene.add(this.pillarOutlineMesh);
 
-    const chargeRingGeom = new THREE.TorusGeometry(1.05, 0.08, 6, 20);
-    chargeRingGeom.rotateX(Math.PI / 2);
-    this.chargeRingMat = new THREE.MeshBasicMaterial({
-      color: '#fef08a',
+    // Ground impact plasma flare & crackling electric shock disc
+    const flareGeom = new THREE.PlaneGeometry(3.5, 3.5);
+    flareGeom.rotateX(-Math.PI / 2);
+    flareGeom.translate(0, 0.032, 0);
+    this.chargeRingMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uDarkMode: { value: 0.0 }
+      },
+      vertexShader: BEAM_FLARE_VERTEX,
+      fragmentShader: BEAM_FLARE_FRAGMENT,
       transparent: true,
-      opacity: 0.85,
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      depthWrite: false,
+      side: THREE.DoubleSide
     });
-    this.chargeRingMesh = new THREE.InstancedMesh(chargeRingGeom, this.chargeRingMat, MAX_PILLARS);
+    this.chargeRingMesh = new THREE.InstancedMesh(flareGeom, this.chargeRingMat, MAX_PILLARS);
     this.chargeRingMesh.frustumCulled = false;
+    this.chargeRingMesh.renderOrder = 5;
     this.scene.add(this.chargeRingMesh);
 
     this.pillars = Array.from({ length: MAX_PILLARS }, (_, i) => ({
@@ -346,7 +726,6 @@ export class ObstacleSystem {
     this.treeDebrisMesh.visible = false;
     this.titanGroup.visible = false;
     this.handMesh.visible = false;
-    this.handWireMesh.visible = false;
     this.handZoneMesh.visible = false;
     this.pillarCoreMesh.visible = false;
     this.pillarOutlineMesh.visible = false;
@@ -403,7 +782,6 @@ export class ObstacleSystem {
   }
 
   pickFairLane(items, spawnZ) {
-    // Guarantee at least one of the 3 lanes stays passable within any 14m Z band
     let occupiedMask = 0;
     for (let j = 0; j < items.length; j++) {
       const other = items[j];
@@ -419,7 +797,6 @@ export class ObstacleSystem {
     if (open.length >= 2) {
       return open[Math.floor(Math.random() * open.length)];
     }
-    // If 2 lanes are already blocked at this Z, share an already-blocked lane rather than walling off lane 3
     for (let l = 0; l < 3; l++) {
       if (occupiedMask & (1 << l)) return l;
     }
@@ -432,12 +809,10 @@ export class ObstacleSystem {
       return;
     }
 
-    // Notice during Stage 3 Overclock & 2nd Overclock, obstacles remain tangible slow-motion threats to evade!
-    // Only manual Temporal Burst triggers full phase-through invulnerability.
     const phaseProtected = state.burstActive;
 
     // =========================================================================
-    // MODE A: STAGE 2 (10s-25.7s) & STAGE 3 OVERCLOCK (25.7s-38s) -> 3-Lane Cars & Bikes
+    // MODE A: STAGE 2 (10s-25.7s) & STAGE 3 OVERCLOCK (25.7s-38s) -> Sculpted Cars & Bikes
     // =========================================================================
     if (!state.worldCollapsed) {
       this.carMesh.visible = true;
@@ -524,7 +899,7 @@ export class ObstacleSystem {
     }
 
     // =========================================================================
-    // MODE B: WORLD COLLAPSE (38s-62s) -> Flying Land Chunks, Cars & Trees in 3 Lanes
+    // MODE B: WORLD COLLAPSE (38s-62s) -> Sculpted Crag Land Slabs, Cars & Multi-Crown Trees
     // =========================================================================
     if (!state.titanMode && !state.stage2BurstActive && !state.blackRedPillarMode) {
       this.landMesh.visible = true;
@@ -595,15 +970,14 @@ export class ObstacleSystem {
     }
 
     // =========================================================================
-    // MODE C: STAGE 4 (62s-136s) -> Giant Synthwave Humanoid Beings + 2-Lane Hand Stomps
+    // MODE C: STAGE 4 (62s-136s) -> Sculpted Synthwave Titans + 2-Lane Clawed Hand Stomps
     // =========================================================================
     if (state.titanMode) {
       this.titanGroup.visible = true;
       this.handMesh.visible = true;
-      this.handWireMesh.visible = true;
       this.handZoneMesh.visible = true;
+      this.titanShaderMat.uniforms.uTime.value = state.runElapsed;
 
-      // Subtle looming hover animation on Giant Synthwave Titans with glowing eyes
       for (let tIdx = 0; tIdx < this.titans.length; tIdx++) {
         const fig = this.titans[tIdx];
         fig.position.y = -1.5 + Math.sin(state.runElapsed * 1.4 + tIdx * Math.PI) * 1.1;
@@ -616,7 +990,6 @@ export class ObstacleSystem {
 
         if (h.z > 12) {
           h.z = -185 - Math.random() * 25;
-          // Alternate Left+Center vs Center+Right so single safe lane changes rhythmically!
           h.isLeft = !h.isLeft;
           h.x = h.isLeft ? -1.5 : 1.5;
           h.coveredLanes = h.isLeft ? [0, 1] : [1, 2];
@@ -626,7 +999,6 @@ export class ObstacleSystem {
           h.hitCooldown = 0;
         }
 
-        // Dramatic vertical slam curve as hand approaches z = -12 -> -2
         const slamT = THREE.MathUtils.clamp((h.z + 28) / 22, 0, 1);
         const dropY = THREE.MathUtils.lerp(7.5, 0.0, slamT * slamT);
 
@@ -652,10 +1024,9 @@ export class ObstacleSystem {
         if (h.active) {
           this.dummy.position.set(h.x, dropY, h.z);
           this.dummy.rotation.set(0, 0, 0);
-          this.dummy.scale.setScalar(1.0);
+          this.dummy.scale.set(h.isLeft ? 1 : -1, 1, 1);
           this.dummy.updateMatrix();
           this.handMesh.setMatrixAt(i, this.dummy.matrix);
-          this.handWireMesh.setMatrixAt(i, this.dummy.matrix);
 
           this.dummy.position.set(h.x, 0.03, h.z);
           this.dummy.rotation.set(0, 0, 0);
@@ -664,42 +1035,30 @@ export class ObstacleSystem {
           this.handZoneMesh.setMatrixAt(i, this.dummy.matrix);
         } else {
           this.hideInstance(this.handMesh, i);
-          this.hideInstance(this.handWireMesh, i);
           this.hideInstance(this.handZoneMesh, i);
         }
       }
       this.handMesh.instanceMatrix.needsUpdate = true;
-      this.handWireMesh.instanceMatrix.needsUpdate = true;
       this.handZoneMesh.instanceMatrix.needsUpdate = true;
       return;
     }
 
     // =========================================================================
-    // MODE D: 2ND OVERCLOCK (136s-142s) -> Slowed Yellow Pillars of Light w/ Electric Charge
-    //         & POST-OVERCLOCK (142s+) -> Black Pillars with Red Outline w/ Electric Charge!
+    // MODE D: 2ND OVERCLOCK (136s-142s) -> Slowed Yellow High-Energy Plasma Beams
+    //         & POST-OVERCLOCK (142s+) -> Pitch-Black Void Beams w/ Red Fresnel Rim & Voltage!
     // =========================================================================
     this.pillarCoreMesh.visible = true;
     this.pillarOutlineMesh.visible = true;
     this.chargeRingMesh.visible = true;
 
-    const isSecondOverclock = state.stage2BurstActive;
-    if (isSecondOverclock) {
-      // Retained Yellow Pillars of Light with yellow electric charge rings
-      this.pillarCoreMat.color.set('#fde047');
-      this.pillarCoreMat.emissive.set('#ffbe3b');
-      this.pillarCoreMat.emissiveIntensity = 1.65;
-      this.pillarCoreMat.opacity = 0.92;
-      this.pillarOutlineMat.color.set('#fef08a');
-      this.chargeRingMat.color.set('#fef08a');
-    } else {
-      // Post-2nd Overclock (142s+): Pitch Black Pillars with bright Red Outline & Red Electric Charge!
-      this.pillarCoreMat.color.set('#050508');
-      this.pillarCoreMat.emissive.set('#080104');
-      this.pillarCoreMat.emissiveIntensity = 0.4;
-      this.pillarCoreMat.opacity = 0.98;
-      this.pillarOutlineMat.color.set('#ff1a35');
-      this.chargeRingMat.color.set('#ff1a35');
-    }
+    const darkBeamMode = state.stage2BurstActive ? 0.0 : 1.0;
+    const beamClock = state.runElapsed;
+    this.beamCoreMat.uniforms.uTime.value = beamClock;
+    this.beamCoreMat.uniforms.uDarkMode.value = darkBeamMode;
+    this.beamCoronaMat.uniforms.uTime.value = beamClock;
+    this.beamCoronaMat.uniforms.uDarkMode.value = darkBeamMode;
+    this.chargeRingMat.uniforms.uTime.value = beamClock;
+    this.chargeRingMat.uniforms.uDarkMode.value = darkBeamMode;
 
     for (let i = 0; i < this.pillarLimit; i++) {
       const p = this.pillars[i];
@@ -724,7 +1083,6 @@ export class ObstacleSystem {
           if (phaseProtected) {
             if (onPhase) onPhase();
           } else {
-            // Post-179s Dual Overdrive retains 80% speed (only 20% hindered!)
             cat.applyImpactSlowdown(state.overdriveMode);
             if (onHit) onHit();
           }
@@ -754,19 +1112,25 @@ export class ObstacleSystem {
       }
 
       if (p.active) {
+        // High-frequency energy beam radial pulse
+        const beamPulse = 1.0 + Math.sin(p.phase * 1.8) * 0.08;
         this.dummy.position.set(p.x, 0, p.z);
-        this.dummy.rotation.set(0, 0, 0);
-        this.dummy.scale.setScalar(1.0);
+        this.dummy.rotation.set(0, p.phase * 0.25, 0);
+        this.dummy.scale.set(beamPulse, 1.0, beamPulse);
         this.dummy.updateMatrix();
         this.pillarCoreMesh.setMatrixAt(i, this.dummy.matrix);
+
+        const coronaPulse = 1.0 + Math.cos(p.phase * 2.2) * 0.14;
+        this.dummy.rotation.set(0, -p.phase * 0.35, 0);
+        this.dummy.scale.set(coronaPulse, 1.0, coronaPulse);
+        this.dummy.updateMatrix();
         this.pillarOutlineMesh.setMatrixAt(i, this.dummy.matrix);
 
-        // Animated electric charge ring sliding rapidly up & down the pillar
-        const chargeY = 0.6 + ((Math.sin(p.phase) * 0.5 + 0.5) * 4.8);
-        const chargeScale = 1.0 + Math.sin(p.phase * 2.3) * 0.25;
-        this.dummy.position.set(p.x, chargeY, p.z);
-        this.dummy.rotation.set(0, p.phase, 0);
-        this.dummy.scale.set(chargeScale, 1, chargeScale);
+        // Ground impact scorch & radial voltage flare
+        const flareScale = 0.95 + Math.sin(p.phase * 2.5) * 0.16;
+        this.dummy.position.set(p.x, 0, p.z);
+        this.dummy.rotation.set(0, 0, 0);
+        this.dummy.scale.set(flareScale, 1.0, flareScale);
         this.dummy.updateMatrix();
         this.chargeRingMesh.setMatrixAt(i, this.dummy.matrix);
       } else {
@@ -780,10 +1144,6 @@ export class ObstacleSystem {
     this.chargeRingMesh.instanceMatrix.needsUpdate = true;
   }
 
-  /**
-   * Normalized 3-lane hazard descriptors for predictive AI dodge controller:
-   * each entry gives { z, coveredLanes: number[] }
-   */
   getObstaclesRef() {
     return {
       vehicles: this.carMesh.visible ? this.vehicles : [],

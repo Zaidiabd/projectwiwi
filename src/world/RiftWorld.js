@@ -13,8 +13,21 @@ export class RiftWorld {
 
     this.activeCount = 64;
 
-    // 1. Floating shattered land / asphalt chunks after physical world collapse (38s+)
-    const landGeom = new THREE.BoxGeometry(1.75, 0.42, 2.2);
+    // 1. Floating shattered land / asphalt crag chunks after physical world collapse (38s+)
+    const landGeom = new THREE.IcosahedronGeometry(1.15, 2);
+    const lPos = landGeom.attributes.position;
+    for (let i = 0; i < lPos.count; i++) {
+      let x = lPos.getX(i) * 1.15;
+      let y = lPos.getY(i);
+      let z = lPos.getZ(i) * 1.35;
+      const crag = 1.0 + 0.16 * Math.sin(x * 3.8 + z * 3.1) + 0.10 * Math.cos(y * 5.2 - x * 2.4);
+      x *= crag;
+      z *= crag;
+      y = y > 0 ? y * 0.24 + 0.04 * Math.sin(x * 4.5 + z * 4.5) : y * 0.62 * crag;
+      lPos.setXYZ(i, x, y, z);
+    }
+    landGeom.computeVertexNormals();
+
     this.shardMat = new THREE.MeshStandardMaterial({
       color: '#1e293b',
       emissive: '#6d28d9',
@@ -29,8 +42,26 @@ export class RiftWorld {
     this.shardMesh.frustumCulled = false;
     this.group.add(this.shardMesh);
 
-    // 2. Flying / tumbling background cars torn off the collapsed neighborhood road
-    const carGeom = new THREE.BoxGeometry(1.4, 0.75, 2.9);
+    // 2. Flying / tumbling aerodynamic background cars torn off the collapsed neighborhood road
+    const carGeom = new THREE.CapsuleGeometry(0.58, 1.85, 8, 16);
+    carGeom.rotateX(Math.PI / 2);
+    carGeom.scale(1.28, 0.68, 1.0);
+    const cPos = carGeom.attributes.position;
+    for (let i = 0; i < cPos.count; i++) {
+      let x = cPos.getX(i);
+      let y = cPos.getY(i);
+      let z = cPos.getZ(i);
+      // Sculpt cabin greenhouse hump + flat undercarriage
+      if (y > 0.05 && Math.abs(z) < 0.85) {
+        y += 0.26 * Math.cos((z / 0.85) * (Math.PI * 0.5));
+        x *= 0.86;
+      } else if (y < -0.12) {
+        y = -0.18;
+      }
+      cPos.setXYZ(i, x, y, z);
+    }
+    carGeom.computeVertexNormals();
+
     this.carMat = new THREE.MeshStandardMaterial({
       color: '#334155',
       emissive: '#ff2a4b',
@@ -44,8 +75,26 @@ export class RiftWorld {
     this.carMesh.frustumCulled = false;
     this.group.add(this.carMesh);
 
-    // 3. Uprooted neighborhood trees tumbling in the background void
-    const treeGeom = new THREE.ConeGeometry(0.95, 2.8, 6);
+    // 3. Uprooted organic neighborhood trees tumbling in the background void
+    const treeGeom = new THREE.IcosahedronGeometry(1.05, 2);
+    treeGeom.scale(0.95, 1.55, 0.95);
+    const tPos = treeGeom.attributes.position;
+    for (let i = 0; i < tPos.count; i++) {
+      let x = tPos.getX(i);
+      let y = tPos.getY(i);
+      let z = tPos.getZ(i);
+      if (y < -0.35) {
+        // Tapered uprooted trunk base
+        x *= 0.28;
+        z *= 0.28;
+      } else {
+        const crownLobe = 1.0 + 0.18 * Math.sin(y * 3.6 + x * 2.8) * Math.cos(z * 2.8);
+        x *= crownLobe;
+        z *= crownLobe;
+      }
+      tPos.setXYZ(i, x, y, z);
+    }
+    treeGeom.computeVertexNormals();
     this.treeMat = new THREE.MeshStandardMaterial({
       color: '#064e3b',
       emissive: '#10b981',
