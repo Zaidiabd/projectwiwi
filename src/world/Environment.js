@@ -130,10 +130,14 @@ function mergeSimpleParts(parts) {
     if (part.pos) g.translate(part.pos[0], part.pos[1], part.pos[2]);
     const pos = g.attributes.position.array;
     const norm = g.attributes.normal.array;
-    const idx = g.index.array;
     posArrays.push(pos);
     normArrays.push(norm);
-    for (let i = 0; i < idx.length; i++) indices.push(idx[i] + vertOffset);
+    if (g.index) {
+      const idx = g.index.array;
+      for (let i = 0; i < idx.length; i++) indices.push(idx[i] + vertOffset);
+    } else {
+      for (let i = 0; i < g.attributes.position.count; i++) indices.push(i + vertOffset);
+    }
     vertOffset += g.attributes.position.count;
     g.dispose();
   }
@@ -377,6 +381,11 @@ export class Environment {
     this.stepPadMesh.frustumCulled = false;
     this.stepPadMesh.renderOrder = 4;
     this.scene.add(this.stepPadMesh);
+
+    this.scratchPadColor.set('#22e6ff');
+    for (let i = 0; i < STEP_PAD_POOL; i++) {
+      this.stepPadMesh.setColorAt(i, this.scratchPadColor);
+    }
 
     this.stepPads = Array.from({ length: STEP_PAD_POOL }, () => ({
       active: false,

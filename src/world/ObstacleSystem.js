@@ -22,10 +22,14 @@ function mergeParts(parts) {
     if (part.pos) g.translate(part.pos[0], part.pos[1], part.pos[2]);
     const pos = g.attributes.position.array;
     const norm = g.attributes.normal.array;
-    const idx = g.index.array;
     posArrays.push(pos);
     normArrays.push(norm);
-    for (let i = 0; i < idx.length; i++) indices.push(idx[i] + vertOffset);
+    if (g.index) {
+      const idx = g.index.array;
+      for (let i = 0; i < idx.length; i++) indices.push(idx[i] + vertOffset);
+    } else {
+      for (let i = 0; i < g.attributes.position.count; i++) indices.push(i + vertOffset);
+    }
     vertOffset += g.attributes.position.count;
     g.dispose();
   }
@@ -96,6 +100,12 @@ export class ObstacleSystem {
     this.bikeMesh = new THREE.InstancedMesh(bikeGeom, this.bikeMat, MAX_LANE_VEHICLES);
     this.bikeMesh.frustumCulled = false;
     this.scene.add(this.bikeMesh);
+
+    this.color.set('#ffffff');
+    for (let i = 0; i < MAX_LANE_VEHICLES; i++) {
+      this.carMesh.setColorAt(i, this.color);
+      this.bikeMesh.setColorAt(i, this.color);
+    }
 
     this.vehicles = Array.from({ length: MAX_LANE_VEHICLES }, (_, i) => ({
       lane: i % 3,
