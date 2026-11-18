@@ -21,6 +21,7 @@ const CAT_FRAGMENT_SHADER = /* glsl */ `
   uniform float uRimIntensity;
   uniform vec3 uLaserTint;
   uniform float uOpacity;
+  uniform float uSaiyan;
   uniform vec2 uTexelSize;
 
   varying vec2 vUv;
@@ -36,12 +37,60 @@ const CAT_FRAGMENT_SHADER = /* glsl */ `
     float edge = clamp((1.0 - aUp) * 0.65 + (1.0 - min(aL, aR)) * 0.45, 0.0, 1.0);
 
     vec3 color = tex.rgb;
+    if (uSaiyan > 0.01) {
+      // Shift blue-gray fur to luminous light-yellow Saiyan fur while preserving dark ink outlines
+      float luma = dot(color, vec3(0.299, 0.587, 0.114));
+      float furMask = smoothstep(0.11, 0.28, luma);
+      vec3 saiyanShade = vec3(0.92, 0.74, 0.22);
+      vec3 saiyanBright = vec3(1.00, 0.96, 0.58);
+      vec3 saiyanFur = mix(saiyanShade, saiyanBright, smoothstep(0.26, 0.74, luma));
+      color = mix(color, saiyanFur, furMask * uSaiyan);
+    }
+
     color += uRimColor * edge * uRimIntensity * tex.a;
     color += uLaserTint * edge * 0.25 * tex.a;
 
     gl_FragColor = vec4(color, tex.a * uOpacity);
   }
 `;
+
+function createSaiyanAuraTexture() {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, 256, 256);
+
+  // Soft outer golden glow
+  const g = ctx.createRadialGradient(128, 148, 18, 128, 138, 118);
+  g.addColorStop(0, 'rgba(254, 240, 138, 0.78)');
+  g.addColorStop(0.45, 'rgba(250, 204, 21, 0.42)');
+  g.addColorStop(0.75, 'rgba(255, 42, 75, 0.14)');
+  g.addColorStop(1, 'rgba(255, 220, 80, 0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Spiky upward Saiyan flame tongues
+  ctx.fillStyle = 'rgba(254, 249, 195, 0.55)';
+  for (let i = 0; i < 11; i++) {
+    const t = (i / 10) * Math.PI;
+    const bx = 128 + Math.cos(t) * 58;
+    const by = 165 - Math.sin(t) * 26;
+    const tipX = 128 + Math.cos(t) * 95;
+    const tipY = 148 - Math.sin(t) * 118 - (i % 2 === 0 ? 18 : 0);
+    ctx.beginPath();
+    ctx.moveTo(bx - 12, by + 18);
+    ctx.quadraticCurveTo((bx + tipX) * 0.5 - 6, (by + tipY) * 0.5, tipX, tipY);
+    ctx.quadraticCurveTo((bx + tipX) * 0.5 + 6, (by + tipY) * 0.5, bx + 12, by + 18);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
 
 function createShadowTexture() {
   const c = document.createElement('canvas');
@@ -123,6 +172,7 @@ export class CatController {
         uRimIntensity: { value: 0.75 },
         uLaserTint: { value: new THREE.Color('#ff2a4b') },
         uOpacity: { value: 1.0 },
+        uSaiyan: { value: 0.0 },
         uTexelSize: { value: new THREE.Vector2(1 / manifest.atlasWidth, 1 / manifest.atlasHeight) }
       },
       vertexShader: CAT_VERTEX_SHADER,
@@ -135,6 +185,23 @@ export class CatController {
     this.spriteMesh = new THREE.Mesh(geom, this.spriteMaterial);
     this.spriteMesh.renderOrder = 10;
     this.group.add(this.spriteMesh);
+
+    // Pulsing Saiyan golden aura behind Wiwi (179s+)
+    this.auraTex = createSaiyanAuraTexture();
+    const auraGeom = new THREE.PlaneGeometry(2.6, 2.4);
+    auraGeom.translate(0, 1.05, 0);
+    this.auraMat = new THREE.MeshBasicMaterial({
+      map: this.auraTex,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    this.auraMesh = new THREE.Mesh(auraGeom, this.auraMat);
+    this.auraMesh.position.z = -0.06;
+    this.auraMesh.renderOrder = 9;
+    this.auraMesh.visible = false;
+    this.group.add(this.auraMesh);
 
     // Grounded projected shadow decal
     this.shadowTex = createShadowTexture();
@@ -185,6 +252,8 @@ export class CatController {
     this.spriteMesh.rotation.set(0, 0, 0);
     this.spriteMesh.scale.set(1, 1, 1);
     this.angerMesh.visible = false;
+    this.auraMesh.visible = false;
+    this.spriteMaterial.uniforms.uSaiyan.value = 0.0;
 
     this.animator.play('idle', { restart: true });
     this.syncSpriteUV();
@@ -210,11 +279,12 @@ export class CatController {
   }
 
   update(playerDt, input, state, laserX, worldScale) {
-    // 1. Speed & boost simulation escalating through each tear stage
+    // 1. Speed & boost simulation escalating through each tear stage + Saiyan Powerup (179s+)
     const tearEscalation = state.tearCount * 12;
     const stage2Bonus = state.stage2BurstActive ? 22 : 0;
-    const baseMaxSpeed = 28 + state.actIndex * 8 + tearEscalation + stage2Bonus;
-    const boostMaxSpeed = 48 + state.actIndex * 10 + tearEscalation * 1.2 + stage2Bonus * 1.15;
+    const saiyanBonus = state.saiyanMode ? 22 : 0;
+    const baseMaxSpeed = 28 + state.actIndex * 8 + tearEscalation + stage2Bonus + saiyanBonus;
+    const boostMaxSpeed = 48 + state.actIndex * 10 + tearEscalation * 1.2 + stage2Bonus * 1.15 + saiyanBonus * 1.25;
     const wantsBoost = input.boost && state.boostEnergy > 0.04;
     state.isBoosting = wantsBoost && (input.forward || this.speed > 4);
 
@@ -337,9 +407,27 @@ export class CatController {
     this.shadowMesh.scale.setScalar(hFactor);
     this.shadowMat.opacity = 0.68 * hFactor;
 
-    // Update rim-light color with tear stage, anomaly vibe & burst stage (balanced for plush gray coat)
+    // Saiyan light-yellow fur transformation & golden aura (179s+)
+    const targetSaiyan = state.saiyanMode ? 1.0 : 0.0;
+    this.spriteMaterial.uniforms.uSaiyan.value +=
+      (targetSaiyan - this.spriteMaterial.uniforms.uSaiyan.value) * (1 - Math.exp(-8 * playerDt));
+
+    this.auraMesh.visible = state.saiyanMode;
+    if (state.saiyanMode) {
+      const t = state.runElapsed;
+      this.auraMesh.position.y = this.y;
+      const sx = 1.05 + Math.sin(t * 28) * 0.12;
+      const sy = 1.10 + Math.cos(t * 34) * 0.14;
+      this.auraMesh.scale.set(sx, sy, 1);
+      this.auraMat.opacity = 0.72 + Math.sin(t * 42) * 0.22;
+    }
+
+    // Update rim-light color with Saiyan powerup, tear stage, anomaly vibe & burst stage
     const rim = this.spriteMaterial.uniforms.uRimColor.value;
-    if (state.stage2BurstActive || (state.burstActive && state.burstStage === 2)) {
+    if (state.saiyanMode) {
+      rim.set('#fef08a');
+      this.spriteMaterial.uniforms.uRimIntensity.value = 1.38;
+    } else if (state.stage2BurstActive || (state.burstActive && state.burstStage === 2)) {
       rim.set('#ffbe3b');
       this.spriteMaterial.uniforms.uRimIntensity.value = 1.25;
     } else if (state.burstActive) {
@@ -432,6 +520,10 @@ export class CatController {
     this.spriteMesh.position.y = this.y;
     this.spriteMesh.rotation.z = step === 2 && showAnger ? Math.sin(endingTimer * 28) * 0.035 : 0;
     this.spriteMesh.scale.set(1, 1, 1);
+
+    // Saiyan powerup fades cleanly into normal cozy Munchkin once landing in the peaceful room
+    this.auraMesh.visible = step === 0;
+    this.spriteMaterial.uniforms.uSaiyan.value = step === 0 ? 1.0 : Math.max(0, this.spriteMaterial.uniforms.uSaiyan.value - dt * 2.5);
 
     this.angerMesh.visible = showAnger;
     if (showAnger) {

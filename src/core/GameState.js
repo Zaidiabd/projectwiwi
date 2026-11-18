@@ -1,7 +1,7 @@
 const BEST_DIST_KEY = 'project_wiwi_best_dist_v1';
 
 export const RUN_DURATION_SECONDS = 216.0;
-export const TARGET_CATCH_DISTANCE = 22000;
+export const TARGET_CATCH_DISTANCE = 23000;
 
 export const TIMELINE = {
   act2Start: 10.0,
@@ -13,6 +13,7 @@ export const TIMELINE = {
   burst2Start: 136.0,
   burst2End: 142.0,
   tear5: 142.0,
+  saiyanPowerup: 179.0,
   finish: RUN_DURATION_SECONDS
 };
 
@@ -26,7 +27,8 @@ export const STAGES = [
   { id: 7, code: 'TEAR IV', name: 'HYPERSTORM RUPTURE', startSec: TIMELINE.tear4 },
   { id: 8, code: 'BURST II', name: 'STAGE II TEMPORAL BURST', startSec: TIMELINE.burst2Start },
   { id: 9, code: 'TEAR V', name: 'FINAL COLLAPSE', startSec: TIMELINE.tear5 },
-  { id: 10, code: 'ACT V', name: 'THE LASER REVEAL', startSec: TIMELINE.finish }
+  { id: 10, code: 'POWERUP', name: 'SAIYAN OVERDRIVE', startSec: TIMELINE.saiyanPowerup },
+  { id: 11, code: 'ACT V', name: 'THE LASER REVEAL', startSec: TIMELINE.finish }
 ];
 
 export class GameState {
@@ -78,6 +80,7 @@ export class GameState {
 
     this.bodyChargeLevel = 0; // 0 before 38s, 1..5 escalating at each tear
     this.anomalyMode = false; // weird space tear anomaly starting at 62s
+    this.saiyanMode = false; // Wiwi powerup halfway through TEAR V (179s+)
 
     this.slipstreamAlignment = 0;
     this.realityIntegrity = 1.0;
@@ -98,7 +101,7 @@ export class GameState {
 
   // Compatibility alias for existing modules using intensity tier 0..4
   get actIndex() {
-    if (this.stageIndex >= 9) return 4;
+    if (this.stageIndex >= 10) return 4;
     if (this.stageIndex >= 3) return 3;
     if (this.stageIndex === 2) return 2;
     if (this.stageIndex === 1) return 1;
@@ -145,12 +148,14 @@ export class GameState {
     if (t >= TIMELINE.burst2Start) {
       this.burstStage = 2;
     }
+    this.saiyanMode = t >= TIMELINE.saiyanPowerup;
 
     return {
       stageChanged: nextStage !== prevStage,
       newTearTriggered: nextTears > prevTearCount,
       enteredBurst2: prevStage < 7 && nextStage === 7,
-      enteredEnding: nextStage >= 9 && prevStage < 9
+      enteredSaiyan: prevStage < 9 && nextStage === 9,
+      enteredEnding: nextStage >= 10 && prevStage < 10
     };
   }
 

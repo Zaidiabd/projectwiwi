@@ -465,6 +465,13 @@ export class Game {
           this.flashValue = 0.55;
           this.audio.playTemporalBurst();
           this.hud.showBanner('BURST II // 136s', 'STAGE II TEMPORAL BURST ENGAGED', '#ffbe3b', 3.2);
+        } else if (events.enteredSaiyan) {
+          // 179s: Halfway through TEAR V -> Wiwi Saiyan Powerup!
+          this.flashValue = 0.72;
+          this.overclockSlowmoTimer = 0.9;
+          this.audio.playTemporalBurst();
+          this.audio.playPhaseShimmer();
+          this.hud.showBanner('POWERUP // 179s', 'SAIYAN OVERDRIVE • RED/BLACK/BLUE VOLTAGE', '#fef08a', 3.4);
         } else if (events.enteredEnding) {
           // 216s: Final leap into the Laser Reveal
           this.beginEnding();
@@ -488,7 +495,7 @@ export class Game {
         } else if (this.state.tearCount === 5) {
           // Lily bursts into the chase at TEAR V (142s)!
           this.audio.playAnnoyedPop();
-          this.hud.showBanner('TEAR V // 142s', 'LILY JOINED THE CHASE! REACH 22,000 m!', '#ff2a4b', 3.6);
+          this.hud.showBanner('TEAR V // 142s', 'LILY JOINED THE CHASE! REACH 23,000 m!', '#ff2a4b', 3.6);
         }
       }
 
@@ -537,12 +544,12 @@ export class Game {
     if (this.compositePass) {
       const isPlaying = this.state.phase === 'playing';
       const spd = isPlaying ? this.state.normalizedSpeed : 0;
-      const anyBurst = this.state.burstActive || this.state.stage2BurstActive;
+      const anyBurst = this.state.burstActive || this.state.stage2BurstActive || this.state.saiyanMode;
       this.compositePass.uniforms.uSpeedBlur.value =
-        spd > 0.22 ? (spd - 0.22) * 0.98 + (anyBurst ? 0.38 : 0) : 0;
+        spd > 0.22 ? (spd - 0.22) * 0.98 + (anyBurst ? 0.42 : 0) : 0;
       this.compositePass.uniforms.uChromatic.value =
         isPlaying && (this.state.actIndex >= 2 || anyBurst)
-          ? 0.002 + spd * 0.0065 + this.state.tearCount * 0.0008 + beatEnergy * 0.002
+          ? 0.002 + spd * 0.0068 + this.state.tearCount * 0.0008 + (this.state.saiyanMode ? 0.0025 : 0) + beatEnergy * 0.002
           : 0;
       this.compositePass.uniforms.uVignette.value =
         this.state.phase === 'ending' || this.state.phase === 'ended' ? 0.14 : 0.26 + spd * 0.14;

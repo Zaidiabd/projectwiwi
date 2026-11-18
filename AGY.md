@@ -149,8 +149,12 @@ high-speed intensity:
 -   `142s--216s`: **TEAR V** — Bigger long-haired black-and-white cat
     **Lily** joins the chase alongside Wiwi while Wiwi displays an
     annoyed pulsing anger symbol (`💢`) overhead.
+-   `179s`: **Saiyan Powerup** halfway through TEAR V — Wiwi's fur shifts
+    to light yellow with a pulsing golden aura, thick red/black/blue
+    ribbon lightning erupts, and supersonic smeared speed afterimages
+    surge.
 -   `216s`: Final leap into Act 5 (`The Laser Reveal`): clearing
-    `>= 22,000 m` lets Wiwi beat Lily to the laser (`UNIVERSE DESTROYED.
+    `>= 23,000 m` lets Wiwi beat Lily to the laser (`UNIVERSE DESTROYED.
     LASER ACQUIRED.`); falling short lets Lily steal it instead.
 
 ### Act 1 --- The Chase
