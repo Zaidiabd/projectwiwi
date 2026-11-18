@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { buildProceduralCatAtlas } from './ProceduralCatAtlas.js';
+import { buildLilyCatAtlas } from './LilyCatAtlas.js';
 import { CatAnimator } from './CatAnimator.js';
 import { LANES } from '../core/GameState.js';
 
@@ -158,7 +159,10 @@ function createAngerSymbolTexture() {
 export class CatController {
   constructor(scene) {
     this.scene = scene;
-    const { texture, manifest } = buildProceduralCatAtlas();
+    this.wiwiAtlas = buildProceduralCatAtlas();
+    this.lilyAtlas = buildLilyCatAtlas();
+    this.characterId = 'wiwi';
+    const { texture, manifest } = this.wiwiAtlas;
     this.atlasTexture = texture;
     this.manifest = manifest;
     this.animator = new CatAnimator(manifest);
@@ -244,11 +248,18 @@ export class CatController {
     this.reset();
   }
 
+  setCharacter(charId = 'wiwi') {
+    this.characterId = charId === 'lily' ? 'lily' : 'wiwi';
+    const bundle = this.characterId === 'lily' ? this.lilyAtlas : this.wiwiAtlas;
+    this.applyAtlas(bundle.texture, bundle.manifest);
+  }
+
   reset() {
     this.laneIndex = 1; // Center lane (0.0) out of 3 lanes [-3, 0, +3]
     this.prevLeft = false;
     this.prevRight = false;
     this.laneRepeatTimer = 0;
+    this.laneSwitchTimer = 0;
     this.x = LANES[1];
     this.y = 0;
     this.vx = 0;
@@ -287,90 +298,108 @@ export class CatController {
     this.animator.play('jump', { restart: true });
   }
 
-    applyImpactSlowdown(isOverdrive = false) {
-      // After Dual Overdrive (179s+), obstacles only hinder by 20% (retain 80% speed)
-      const retain = isOverdrive ? 0.80 : 0.62;
-      const floor = isOverdrive ? 24 : 8;
-      this.speed = Math.max(floor, this.speed * retain);
-      this.squashX = isOverdrive ? 1.10 : 1.18;
-      this.squashY = isOverdrive ? 0.90 : 0.84;
+  applyImpactSlowdown(isOverdrive = false, state = null) {
+    // Before Overdrive (179s): obstacle hit cuts speed to 52% and costs 45m momentum;
+    // After Dual Overdrive (179s+): obstacles only hinder by 20% (retain 80% speed)
+    const retain = isOverdrive ? 0.80 : 0.52;
+    const floor = isOverdrive ? 24 : 8;
+    this.speed = Math.max(floor, this.speed * retain);
+    if (state && !isOverdrive) {
+      state.distance = Math.max(0, state.distance - 45);
+    }
+    this.squashX = isOverdrive ? 1.10 : 1.18;
+    this.squashY = isOverdrive ? 0.90 : 0.84;
+  }
+
+  update(playerDt, input, state, laserX, worldScale) {
+    // 1. Calibrated Speed & Threshold Simulation (TARGET_CATCH_DISTANCE = 23,000m):
+    //    - AFK (no W): 0m -> Rival wins
+    //    - Lazy W-only (hitting obstacles, no boost): ~13,800m -> Rival wins
+    //    - W + Dodging only (no Shift boost): ~19,200m -> Rival wins
+    //    - Active Play (W + Dodging + Shift Boost + Slipstream + Burst): ~25,200m -> Player wins!
+    const tearEscalation = state.tearCount * 7.2;
+    const stage2Bonus = state.stage2BurstActive ? 14 : 0;
+    const overdriveClimb = state.overdriveMode ? Math.max(0, state.runElapsed - 179.0) * 0.68 : 0;
+    const overdriveBonus = state.overdriveMode ? 14 + overdriveClimb : 0;
+    const baseMaxSpeed =
+      state.actIndex === 0
+        ? 18
+        : state.actIndex === 1
+          ? 28
+          : 22 + state.actIndex * 5 + tearEscalation + stage2Bonus + overdriveBonus;
+    const boostMaxSpeed =
+      state.actIndex === 1
+        ? 44
+        : baseMaxSpeed + 18 + state.tearCount * 3.0 + (state.overdriveMode ? 10 : 0);
+    const wantsBoost = state.boostUnlocked && input.boost && state.boostEnergy > 0.04;
+    state.isBoosting = wantsBoost && (input.forward || this.speed > 4);
+
+    if (state.isBoosting) {
+      state.boostEnergy = Math.max(0, state.boostEnergy - playerDt * 0.24);
+    } else {
+      const slipRecharge = state.slipstreamAlignment * 0.22;
+      state.boostEnergy = Math.min(1, state.boostEnergy + playerDt * (0.16 + slipRecharge));
     }
 
-    update(playerDt, input, state, laserX, worldScale) {
-      // 1. Speed & boost simulation: Stage 1 normal run -> Stage 2 accelerate & boost -> Stage 3 Overclock!
-      const tearEscalation = state.tearCount * 12;
-      const stage2Bonus = state.stage2BurstActive ? 22 : 0;
-      const overdriveClimb = state.overdriveMode ? Math.max(0, state.runElapsed - 179.0) * 1.15 : 0;
-      const overdriveBonus = state.overdriveMode ? 22 + overdriveClimb : 0;
-      const baseMaxSpeed =
-        state.actIndex === 0
-          ? 22
-          : state.actIndex === 1
-            ? 38
-            : 28 + state.actIndex * 8 + tearEscalation + stage2Bonus + overdriveBonus;
-      const boostMaxSpeed =
-        state.actIndex === 1
-          ? 58
-          : 48 + state.actIndex * 10 + tearEscalation * 1.2 + stage2Bonus * 1.15 + overdriveBonus * 1.25;
-      const wantsBoost = state.boostUnlocked && input.boost && state.boostEnergy > 0.04;
-      state.isBoosting = wantsBoost && (input.forward || this.speed > 4);
+    const targetMax = state.isBoosting ? boostMaxSpeed : baseMaxSpeed;
+    const slipBonus = state.slipstreamAlignment * (state.isBoosting ? 8.5 : 3.0);
 
-      if (state.isBoosting) {
-        state.boostEnergy = Math.max(0, state.boostEnergy - playerDt * 0.24);
+    if (input.forward) {
+      state.hasMovedOnce = true;
+      const desiredSpeed = targetMax + slipBonus;
+      const accelRate = state.isBoosting ? (state.overdriveMode ? 42 : 28) : (state.overdriveMode ? 22 : 14);
+      if (this.speed < desiredSpeed) {
+        this.speed = Math.min(desiredSpeed, this.speed + accelRate * playerDt);
       } else {
-        const slipRecharge = state.slipstreamAlignment * 0.22;
-        state.boostEnergy = Math.min(1, state.boostEnergy + playerDt * (0.16 + slipRecharge));
+        this.speed = Math.max(desiredSpeed, this.speed - 12 * playerDt);
       }
+    } else if (state.hasMovedOnce) {
+      // Letting go of W decelerates down to a slow coast so AFK players cannot coast to 23,000m
+      const coastFloor = 4.0;
+      this.speed = Math.max(coastFloor, this.speed - 20 * playerDt);
+    } else {
+      this.speed = Math.max(0, this.speed - 20 * playerDt);
+    }
 
-      const targetMax = state.isBoosting ? boostMaxSpeed : baseMaxSpeed;
-      const slipBonus = state.slipstreamAlignment * 6.5;
+    // Automatic Overclock or manual Temporal Burst surge requires active running (or manual burst trigger)
+    if (state.burstActive) {
+      this.speed = Math.max(this.speed, boostMaxSpeed + 12);
+    } else if ((state.overclock1Active || state.stage2BurstActive) && input.forward) {
+      this.speed = Math.max(this.speed, baseMaxSpeed + (state.stage2BurstActive ? 14 : 10));
+    }
 
-      if (input.forward || state.hasMovedOnce) {
-        const cruiseFloor = state.hasMovedOnce ? (input.forward ? targetMax + slipBonus : 14 + state.tearCount * 4) : 0;
-        const accelRate = input.forward
-          ? (state.isBoosting ? (state.overdriveMode ? 44 : 28) : (state.overdriveMode ? 28 : 16))
-          : 5.5;
-        if (this.speed < cruiseFloor) {
-          this.speed = Math.min(cruiseFloor, this.speed + accelRate * playerDt);
-        } else {
-          this.speed = Math.max(cruiseFloor, this.speed - 12 * playerDt);
+    state.speed = this.speed;
+    state.peakSpeed = Math.max(state.peakSpeed, this.speed);
+    state.normalizedSpeed = Math.min(1, this.speed / 185);
+
+    // 2. Discrete 3-lane navigation (Left = -3.0, Center = 0.0, Right = +3.0)
+    const prevLane = this.laneIndex;
+    if (typeof input.targetLane === 'number') {
+      this.laneIndex = THREE.MathUtils.clamp(input.targetLane, 0, 2);
+    } else {
+      const leftPressed = Boolean(input.left);
+      const rightPressed = Boolean(input.right);
+      if (leftPressed && !this.prevLeft) {
+        this.laneIndex = Math.max(0, this.laneIndex - 1);
+        this.laneRepeatTimer = 0.22;
+      } else if (rightPressed && !this.prevRight) {
+        this.laneIndex = Math.min(2, this.laneIndex + 1);
+        this.laneRepeatTimer = 0.22;
+      } else if (leftPressed !== rightPressed) {
+        this.laneRepeatTimer -= playerDt;
+        if (this.laneRepeatTimer <= 0) {
+          this.laneIndex = THREE.MathUtils.clamp(this.laneIndex + (rightPressed ? 1 : -1), 0, 2);
+          this.laneRepeatTimer = 0.16;
         }
-        if (input.forward) state.hasMovedOnce = true;
-      } else {
-        this.speed = Math.max(0, this.speed - 15 * playerDt);
       }
-
-      // Automatic Stage 3 Overclock speed push or manual Temporal Burst surge
-      if (state.overclock1Active || state.burstActive || state.stage2BurstActive) {
-        this.speed = Math.max(this.speed, baseMaxSpeed + (state.stage2BurstActive ? 24 : 16));
-      }
-
-      state.speed = this.speed;
-      state.peakSpeed = Math.max(state.peakSpeed, this.speed);
-      state.normalizedSpeed = Math.min(1, this.speed / 185);
-
-      // 2. Discrete 3-lane navigation (Left = -3.0, Center = 0.0, Right = +3.0)
-      if (typeof input.targetLane === 'number') {
-        this.laneIndex = THREE.MathUtils.clamp(input.targetLane, 0, 2);
-      } else {
-        const leftPressed = Boolean(input.left);
-        const rightPressed = Boolean(input.right);
-        if (leftPressed && !this.prevLeft) {
-          this.laneIndex = Math.max(0, this.laneIndex - 1);
-          this.laneRepeatTimer = 0.22;
-        } else if (rightPressed && !this.prevRight) {
-          this.laneIndex = Math.min(2, this.laneIndex + 1);
-          this.laneRepeatTimer = 0.22;
-        } else if (leftPressed !== rightPressed) {
-          this.laneRepeatTimer -= playerDt;
-          if (this.laneRepeatTimer <= 0) {
-            this.laneIndex = THREE.MathUtils.clamp(this.laneIndex + (rightPressed ? 1 : -1), 0, 2);
-            this.laneRepeatTimer = 0.16;
-          }
-        }
-        this.prevLeft = leftPressed;
-        this.prevRight = rightPressed;
-      }
+      this.prevLeft = leftPressed;
+      this.prevRight = rightPressed;
+    }
+    if (this.laneIndex !== prevLane) {
+      this.laneSwitchTimer = 0.85;
+    } else {
+      this.laneSwitchTimer = Math.max(0, this.laneSwitchTimer - playerDt);
+    }
 
       const targetX = LANES[this.laneIndex];
       const latErr = targetX - this.x;

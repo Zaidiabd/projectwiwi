@@ -757,6 +757,86 @@ body,
   padding: 12px;
 }
 
+.char-select-block {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.char-select-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.char-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.65);
+  color: #e2e8f0;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease;
+}
+
+.char-card:hover {
+  border-color: rgba(56, 243, 255, 0.55);
+  transform: translateY(-1px);
+}
+
+.char-card.active[data-char="wiwi"] {
+  border-color: #22e6ff;
+  background: rgba(34, 230, 255, 0.14);
+  box-shadow: 0 0 18px rgba(34, 230, 255, 0.25);
+}
+
+.char-card.active[data-char="lily"] {
+  border-color: #34d399;
+  background: rgba(52, 211, 153, 0.14);
+  box-shadow: 0 0 18px rgba(52, 211, 153, 0.25);
+}
+
+.char-badge {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.char-badge.wiwi-dot {
+  background: radial-gradient(circle at 35% 35%, #fcd34d, #38bdf8);
+  box-shadow: 0 0 10px #22e6ff;
+}
+
+.char-badge.lily-dot {
+  background: radial-gradient(circle at 35% 35%, #f8fafc, #34d399);
+  box-shadow: 0 0 10px #34d399;
+}
+
+.char-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.char-info strong {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+}
+
+.char-info small {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
 .ctrl-item {
   display: flex;
   align-items: center;

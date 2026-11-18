@@ -84,7 +84,8 @@ export class Game {
       onToggleMute: () => this.audio.toggleMute(),
       onAudioUpload: (file) => this.audio.loadLocalFile(file),
       onVolumeChange: (val) => this.audio.setVolume(val),
-      onQualityChange: (tier) => this.quality.setTier(tier)
+      onQualityChange: (tier) => this.quality.setTier(tier),
+      onSelectCharacter: (charId) => this.selectCharacter(charId)
     });
 
     // Post-processing
@@ -289,8 +290,18 @@ export class Game {
     return this.autopilot.enabled;
   }
 
+  selectCharacter(charId = 'wiwi') {
+    const normalized = charId === 'lily' ? 'lily' : 'wiwi';
+    const rivalId = normalized === 'lily' ? 'wiwi' : 'lily';
+    this.state.selectedCharacter = normalized;
+    this.cat.setCharacter(normalized);
+    this.lily.setCharacter(rivalId);
+    this.afterimages.setCharacterTexture(this.cat.getSpriteTexture());
+  }
+
   startRun(useAI = false) {
     this.resetSimulation();
+    this.selectCharacter(this.state.selectedCharacter);
     this.autopilot.setEnabled(useAI);
     this.menus.syncAIButton(useAI);
     this.state.phase = 'playing';
@@ -542,11 +553,16 @@ export class Game {
         } else if (this.state.tearCount === 4) {
           this.hud.showBanner('TEAR IV // 75s', 'SYNTHWAVE HAND BARRAGE ESCALATING', '#e879f9', 3.0);
         } else if (this.state.tearCount === 5) {
-          // 142s: 2nd Overclock ends -> Pillars turn Black w/ Red Outline & Lily joins TEAR V!
+          // 142s: 2nd Overclock ends -> Pillars turn Black w/ Red Outline & Rival joins TEAR V!
+          const rivalLabel = this.state.rivalLabel;
+          const rivalSub =
+            rivalLabel === 'LILY'
+              ? 'LONG-HAIRED CHALLENGER JOINED TEAR V'
+              : 'MUNCHKIN SPRINTER JOINED TEAR V';
           this.audio.playAnnoyedPop();
           this.audio.playRivalAlert();
-          this.hud.showBanner('TEAR V // 142s', 'BLACK-RED PILLARS • LILY JOINED THE CHASE!', '#ff2a4b', 3.6);
-          this.hud.showRivalAlert('LILY', 'LONG-HAIRED CHALLENGER JOINED TEAR V', '#ff2a4b', 3.6);
+          this.hud.showBanner('TEAR V // 142s', `BLACK-RED PILLARS • ${rivalLabel} JOINED THE CHASE!`, '#ff2a4b', 3.6);
+          this.hud.showRivalAlert(rivalLabel, rivalSub, '#ff2a4b', 3.6);
         }
       }
 
@@ -582,11 +598,11 @@ export class Game {
             this.speedEffects.spawnImpactBurst(lx, 0.6, lz, '#fb7185', 10);
           },
           () => {
-            // Near-miss Graze bonus!
+            // Active-dodge Near-miss Graze bonus!
             this.state.grazeCount++;
             this.state.grazeStreak++;
             this.state.grazeTimer = 2.8;
-            this.state.distance += 42 + Math.min(80, this.state.grazeStreak * 12);
+            this.state.distance += 18 + Math.min(32, this.state.grazeStreak * 6);
             this.state.boostEnergy = Math.min(1, this.state.boostEnergy + 0.09);
             if (this.state.burstUnlocked) {
               this.state.burstCharge = Math.min(1, this.state.burstCharge + 0.06);

@@ -32,6 +32,7 @@ export class HUD {
 
     this.powerupBuffEl = document.getElementById('powerup-buff-pill');
     this.rivalryWidgetEl = document.getElementById('rivalry-widget');
+    this.rivalryTagEl = document.getElementById('rivalry-tag');
     this.rivalryDeltaEl = document.getElementById('rivalry-delta');
     this.rivalryFillEl = document.getElementById('rivalry-fill');
 
@@ -231,9 +232,16 @@ export class HUD {
       const showRivalry = state.phase === 'playing' && state.tearCount >= 5;
       this.rivalryWidgetEl.classList.toggle('hidden', !showRivalry);
       if (showRivalry) {
+        const playerLabel = state.playerLabel || 'WIWI';
+        const rivalLabel = state.rivalLabel || 'LILY';
+        if (this.rivalryTagEl) {
+          this.rivalryTagEl.textContent = `RIVALRY PACE // ${playerLabel} vs ${rivalLabel}`;
+        }
         const delta = Math.round(state.rivalryDelta);
         const ahead = delta >= 0;
-        this.rivalryDeltaEl.textContent = ahead ? `WIWI +${delta} m` : `LILY +${Math.abs(delta)} m`;
+        this.rivalryDeltaEl.textContent = ahead
+          ? `${playerLabel} +${delta} m`
+          : `${rivalLabel} +${Math.abs(delta)} m`;
         this.rivalryDeltaEl.style.color = ahead ? '#22e6ff' : '#ff2a4b';
         const pct = Math.max(8, Math.min(92, 50 + (delta / 900) * 42));
         this.rivalryFillEl.style.width = `${pct.toFixed(1)}%`;

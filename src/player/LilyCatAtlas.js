@@ -521,6 +521,23 @@ export function buildLilyCatAtlas() {
     };
   });
 
+  // Alias player clip names so Lily's atlas can also be used by CatController when the player selects Lily
+  clips.idle = clips.sit_smug;
+  clips.alert = clips.shocked;
+  clips.run = clips.run_rear;
+  clips.run_left = clips.run_rear;
+  clips.run_right = clips.run_rear;
+  clips.sprint = clips.run_rear;
+  clips.overclock = clips.run_rear;
+  clips.slowmo = clips.trot;
+  clips.jump = clips.pounce;
+  clips.fall = clips.run_rear;
+  clips.land = clips.trot;
+  clips.sit = clips.sit_smug;
+  clips.catch = clips.pounce;
+  clips.annoyed = clips.shocked;
+  clips.flop_lose = clips.sulking;
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearFilter;

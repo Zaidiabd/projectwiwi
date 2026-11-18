@@ -784,6 +784,14 @@ export function buildProceduralCatAtlas() {
     };
   });
 
+  // Alias rival clip names so Wiwi's atlas can also be used by LilyController when the player selects Lily
+  clips.run_rear = clips.sprint;
+  clips.trot = clips.run;
+  clips.pounce = clips.catch;
+  clips.sit_smug = clips.sit;
+  clips.shocked = clips.annoyed;
+  clips.sulking = clips.flop_lose;
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearFilter;

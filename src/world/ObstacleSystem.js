@@ -935,13 +935,21 @@ export class ObstacleSystem {
             if (phaseProtected) {
               if (onPhase) onPhase();
             } else {
-              cat.applyImpactSlowdown(false);
+              cat.applyImpactSlowdown(false, state);
               if (onHit) onHit();
             }
           }
         }
 
-        if (v.active && !v.grazed && v.z > 0.3 && v.z < 3.6 && Math.abs(v.lane - cat.laneIndex) === 1) {
+        if (
+          v.active &&
+          !v.grazed &&
+          v.z > 0.3 &&
+          v.z < 3.6 &&
+          cat.speed > 24 &&
+          cat.laneSwitchTimer > 0 &&
+          Math.abs(v.lane - cat.laneIndex) === 1
+        ) {
           v.grazed = true;
           if (onGraze) onGraze(v.x, 0.5);
         }
@@ -1015,13 +1023,21 @@ export class ObstacleSystem {
             if (phaseProtected) {
               if (onPhase) onPhase();
             } else {
-              cat.applyImpactSlowdown(false);
+              cat.applyImpactSlowdown(false, state);
               if (onHit) onHit();
             }
           }
         }
 
-        if (d.active && !d.grazed && d.z > 0.3 && d.z < 3.6 && Math.abs(d.lane - cat.laneIndex) === 1) {
+        if (
+          d.active &&
+          !d.grazed &&
+          d.z > 0.3 &&
+          d.z < 3.6 &&
+          cat.speed > 24 &&
+          cat.laneSwitchTimer > 0 &&
+          Math.abs(d.lane - cat.laneIndex) === 1
+        ) {
           d.grazed = true;
           if (onGraze) onGraze(d.x, 0.5);
         }
@@ -1107,13 +1123,21 @@ export class ObstacleSystem {
             if (phaseProtected) {
               if (onPhase) onPhase();
             } else {
-              cat.applyImpactSlowdown(false);
+              cat.applyImpactSlowdown(false, state);
               if (onHit) onHit();
             }
           }
         }
 
-        if (h.active && !h.grazed && h.z > 1.2 && h.z < 4.5 && cat.laneIndex === h.exitLane) {
+        if (
+          h.active &&
+          !h.grazed &&
+          h.z > 1.2 &&
+          h.z < 4.5 &&
+          cat.speed > 24 &&
+          cat.laneSwitchTimer > 0 &&
+          cat.laneIndex === h.exitLane
+        ) {
           h.grazed = true;
           if (onGraze) onGraze(LANES[h.exitLane], 0.9);
         }
@@ -1180,13 +1204,21 @@ export class ObstacleSystem {
           if (phaseProtected) {
             if (onPhase) onPhase();
           } else {
-            cat.applyImpactSlowdown(state.overdriveMode);
+            cat.applyImpactSlowdown(state.overdriveMode, state);
             if (onHit) onHit();
           }
         }
       }
 
-      if (p.active && !p.grazed && p.z > 0.3 && p.z < 3.6 && Math.abs(p.lane - cat.laneIndex) === 1) {
+      if (
+        p.active &&
+        !p.grazed &&
+        p.z > 0.3 &&
+        p.z < 3.6 &&
+        cat.speed > 24 &&
+        cat.laneSwitchTimer > 0 &&
+        Math.abs(p.lane - cat.laneIndex) === 1
+      ) {
         p.grazed = true;
         if (onGraze) onGraze(p.x, 0.9);
       }

@@ -86,7 +86,7 @@
       <!-- Live TEAR V Rivalry Pace Indicator -->
       <div id="rivalry-widget" class="rivalry-widget hidden" aria-hidden="true">
         <div class="rivalry-head">
-          <span class="rivalry-tag">RIVALRY PACE // WIWI vs LILY</span>
+          <span id="rivalry-tag" class="rivalry-tag">RIVALRY PACE // WIWI vs LILY</span>
           <strong id="rivalry-delta" class="rivalry-delta">AHEAD +0 m</strong>
         </div>
         <div class="rivalry-bar">
@@ -175,6 +175,26 @@
           <div class="ctrl-item"><kbd>A</kbd> / <kbd>D</kbd><span>Steer &amp; Track Slipstream</span></div>
           <div class="ctrl-item"><kbd>SHIFT</kbd><span>Overdrive Boost</span></div>
           <div class="ctrl-item"><kbd>SPACE</kbd><span>Temporal Burst (Slow World)</span></div>
+        </div>
+
+        <div class="char-select-block">
+          <span class="field-label">SELECT RUNNER</span>
+          <div class="char-select-grid" id="start-char-group">
+            <button type="button" class="char-card active" data-char="wiwi">
+              <span class="char-badge wiwi-dot"></span>
+              <span class="char-info">
+                <strong>WIWI</strong>
+                <small>MUNCHKIN SPRINTER • RIVAL: LILY</small>
+              </span>
+            </button>
+            <button type="button" class="char-card" data-char="lily">
+              <span class="char-badge lily-dot"></span>
+              <span class="char-info">
+                <strong>LILY</strong>
+                <small>FLUFFY TUXEDO • RIVAL: WIWI</small>
+              </span>
+            </button>
+          </div>
         </div>
 
         <div class="setup-row">

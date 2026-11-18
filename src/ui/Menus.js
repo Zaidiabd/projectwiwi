@@ -64,6 +64,23 @@ export class Menus {
         this.syncQualityButtons(tier);
       });
     }
+
+    this.charButtons = [...document.querySelectorAll('#start-char-group button')];
+    for (const btn of this.charButtons) {
+      btn.addEventListener('click', () => {
+        const charId = btn.dataset.char;
+        if (handlers.onSelectCharacter) {
+          handlers.onSelectCharacter(charId);
+        }
+        this.syncCharacterButtons(charId);
+      });
+    }
+  }
+
+  syncCharacterButtons(activeChar) {
+    for (const btn of this.charButtons) {
+      btn.classList.toggle('active', btn.dataset.char === activeChar);
+    }
   }
 
   syncQualityButtons(activeTier) {
@@ -95,15 +112,19 @@ export class Menus {
 
   showEnding(state) {
     this.endScreen.classList.remove('hidden');
+    const playerLabel = state.playerLabel || 'WIWI';
+    const rivalLabel = state.rivalLabel || 'LILY';
+    const playerTitle = playerLabel === 'LILY' ? 'Lily' : 'Wiwi';
+    const rivalTitle = rivalLabel === 'LILY' ? 'Lily' : 'Wiwi';
 
     if (state.wiwiWon) {
       this.endHeadlineEl.innerHTML = 'UNIVERSE DESTROYED.<br />LASER ACQUIRED.';
-      this.endOutcomeNoteEl.textContent = `Wiwi dove past Lily and claimed the dot! (${TARGET_CATCH_DISTANCE.toLocaleString()} m threshold cleared)`;
+      this.endOutcomeNoteEl.textContent = `${playerTitle} dove past ${rivalTitle} and claimed the dot! (${TARGET_CATCH_DISTANCE.toLocaleString()} m threshold cleared)`;
       this.endOutcomeNoteEl.style.color = '#22e6ff';
     } else {
       const deficit = Math.max(1, Math.round(TARGET_CATCH_DISTANCE - state.distance));
-      this.endHeadlineEl.innerHTML = 'UNIVERSE DESTROYED.<br />LILY STOLE THE LASER.';
-      this.endOutcomeNoteEl.textContent = `Big fluffy Lily casually stepped on it first! Needed +${deficit.toLocaleString()} m to reach ${TARGET_CATCH_DISTANCE.toLocaleString()} m.`;
+      this.endHeadlineEl.innerHTML = `UNIVERSE DESTROYED.<br />${rivalLabel} STOLE THE LASER.`;
+      this.endOutcomeNoteEl.textContent = `${rivalTitle} casually stepped on it first! ${playerTitle} needed +${deficit.toLocaleString()} m to reach ${TARGET_CATCH_DISTANCE.toLocaleString()} m.`;
       this.endOutcomeNoteEl.style.color = '#ff6b81';
     }
 

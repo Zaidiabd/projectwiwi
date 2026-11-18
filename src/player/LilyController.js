@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { buildLilyCatAtlas } from './LilyCatAtlas.js';
+import { buildProceduralCatAtlas } from './ProceduralCatAtlas.js';
 import { CatAnimator } from './CatAnimator.js';
-import { RUN_DURATION_SECONDS, TARGET_CATCH_DISTANCE } from '../core/GameState.js';
+import { getExpectedRivalDistance } from '../core/GameState.js';
 
 const LILY_VERT = /* glsl */ `
   varying vec2 vUv;
@@ -109,7 +110,10 @@ function createLilyOverdriveAuraTexture() {
 export class LilyController {
   constructor(scene) {
     this.scene = scene;
-    const { texture, manifest } = buildLilyCatAtlas();
+    this.lilyAtlas = buildLilyCatAtlas();
+    this.wiwiAtlas = buildProceduralCatAtlas();
+    this.characterId = 'lily';
+    const { texture, manifest } = this.lilyAtlas;
     this.atlasTexture = texture;
     this.manifest = manifest;
     this.animator = new CatAnimator(manifest);
@@ -176,6 +180,17 @@ export class LilyController {
     this.reset();
   }
 
+  setCharacter(charId = 'lily') {
+    this.characterId = charId === 'wiwi' ? 'wiwi' : 'lily';
+    const bundle = this.characterId === 'wiwi' ? this.wiwiAtlas : this.lilyAtlas;
+    this.atlasTexture = bundle.texture;
+    this.manifest = bundle.manifest;
+    this.animator = new CatAnimator(bundle.manifest);
+    this.mat.uniforms.uMap.value = bundle.texture;
+    this.mat.uniforms.uTexelSize.value.set(1 / bundle.manifest.atlasWidth, 1 / bundle.manifest.atlasHeight);
+    this.syncUV();
+  }
+
   reset() {
     this.x = 5.8;
     this.y = 0;
@@ -227,7 +242,7 @@ export class LilyController {
     this.x += (desiredX - this.x) * smooth;
 
     // Rivalry Z-lead: tracks threshold pace, plus slight overdrive forward push while keeping obstacle hindrance fair
-    const expectedDist = (state.runElapsed / RUN_DURATION_SECONDS) * TARGET_CATCH_DISTANCE;
+    const expectedDist = getExpectedRivalDistance(state.runElapsed);
     const paceRatio = (state.distance - expectedDist) / 900; // + ahead, - behind
     const overdrivePush = state.overdriveMode ? Math.min(0.45, Math.max(0, state.runElapsed - 179.0) * 0.012) : 0;
     const desiredZ = THREE.MathUtils.clamp(-0.6 - paceRatio * 1.1 - overdrivePush + this.hitZOffset, -2.15, 1.15);

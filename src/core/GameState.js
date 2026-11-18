@@ -28,15 +28,53 @@ export const STAGES = [
   { id: 6, code: 'STAGE IV', name: 'SYNTHWAVE TITANS', startSec: TIMELINE.tear3RiftGates },
   { id: 7, code: 'TEAR IV', name: 'TITAN HAND BARRAGE', startSec: TIMELINE.tear4 },
   { id: 8, code: 'OVERCLOCK II', name: '2ND OVERCLOCK // LIGHT PILLARS', startSec: TIMELINE.burst2Start },
-  { id: 9, code: 'TEAR V', name: 'BLACK-RED PILLARS // LILY CHASE', startSec: TIMELINE.tear5 },
+  { id: 9, code: 'TEAR V', name: 'BLACK-RED PILLARS // RIVAL CHASE', startSec: TIMELINE.tear5 },
   { id: 10, code: 'OVERDRIVE', name: 'DUAL OVERDRIVE', startSec: TIMELINE.overdrivePowerup },
   { id: 11, code: 'ACT V', name: 'THE LASER REVEAL', startSec: TIMELINE.finish }
 ];
 
+// Piecewise cumulative pace checkpoints (timeSec -> fraction of TARGET_CATCH_DISTANCE)
+// Matches the actual stage acceleration curve so Rivalry Pace & Threshold Race are accurate at every stage
+const PACE_CHECKPOINTS = [
+  [0.0, 0.0],
+  [10.0, 0.011],
+  [25.7, 0.042],
+  [38.0, 0.088],
+  [50.0, 0.130],
+  [62.0, 0.178],
+  [75.0, 0.238],
+  [136.0, 0.565],
+  [142.0, 0.610],
+  [179.0, 0.785],
+  [216.0, 1.0]
+];
+
+export function getExpectedRivalDistance(seconds) {
+  const t = Math.max(0, Math.min(RUN_DURATION_SECONDS, seconds));
+  for (let i = 0; i < PACE_CHECKPOINTS.length - 1; i++) {
+    const [t0, f0] = PACE_CHECKPOINTS[i];
+    const [t1, f1] = PACE_CHECKPOINTS[i + 1];
+    if (t <= t1) {
+      const u = t1 > t0 ? (t - t0) / (t1 - t0) : 0;
+      return (f0 + (f1 - f0) * u) * TARGET_CATCH_DISTANCE;
+    }
+  }
+  return TARGET_CATCH_DISTANCE;
+}
+
 export class GameState {
   constructor() {
     this.bestDistance = this.loadBestDistance();
+    this.selectedCharacter = 'wiwi'; // 'wiwi' | 'lily'
     this.reset();
+  }
+
+  get playerLabel() {
+    return this.selectedCharacter === 'lily' ? 'LILY' : 'WIWI';
+  }
+
+  get rivalLabel() {
+    return this.selectedCharacter === 'lily' ? 'WIWI' : 'LILY';
   }
 
   loadBestDistance() {
@@ -168,7 +206,7 @@ export class GameState {
       this.burstStage = 2;
     }
     this.overdriveMode = t >= TIMELINE.overdrivePowerup;
-    const expectedDist = this.progress * TARGET_CATCH_DISTANCE;
+    const expectedDist = getExpectedRivalDistance(t);
     this.rivalryDelta = this.distance - expectedDist;
 
     return {

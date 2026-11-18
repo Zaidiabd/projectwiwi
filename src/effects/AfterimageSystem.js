@@ -85,6 +85,12 @@ export class AfterimageSystem {
     this.activeLimit = Math.min(MAX_POOL, count + 4);
   }
 
+  setCharacterTexture(texture) {
+    for (const p of this.pool) {
+      p.mat.uniforms.uMap.value = texture;
+    }
+  }
+
   reset() {
     this.spawnTimer = 0;
     for (const p of this.pool) {
