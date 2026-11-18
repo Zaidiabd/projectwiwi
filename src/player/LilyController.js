@@ -199,6 +199,8 @@ export class LilyController {
     this.z = -0.8;
     this.vy = 0;
     this.overdrivePhase = 0;
+    this.hitSlowFactor = 1.0;
+    this.hitZOffset = 0;
     this.group.visible = false;
     this.group.position.set(this.x, 0, this.z);
     this.spriteMesh.position.y = 0;
@@ -214,9 +216,16 @@ export class LilyController {
     this.syncUV();
   }
 
+  applyImpactSlowdown(isOverdrive = false) {
+    // Before Overdrive: 38% speed loss (0.62x); after Dual Overdrive (179s+): only 20% hindered (0.80x)
+    const retain = isOverdrive ? 0.80 : 0.62;
+    this.hitSlowFactor = Math.min(this.hitSlowFactor, retain);
+    this.hitZOffset = Math.min(1.4, this.hitZOffset + (isOverdrive ? 0.36 : 0.85));
+  }
+
   /**
    * Lily joins the chase at TEAR V (142s -> 216s), bounding alongside Wiwi
-   * and pulling ahead or trailing slightly based on Wiwi's threshold pace!
+   * and surging continuously faster during Dual Overdrive (179s+)!
    */
   updateChase(playerDt, cat, state, laserX) {
     if (state.tearCount < 5 || state.phase !== 'playing') {
@@ -227,19 +236,26 @@ export class LilyController {
     this.group.visible = true;
     const smooth = 1 - Math.exp(-5.0 * playerDt);
 
+    // Recover rapidly back to full pace & accelerate continuously during 179s+ Overdrive
+    const recoverRate = state.overdriveMode ? 2.6 : 1.4;
+    this.hitSlowFactor = Math.min(1.0, this.hitSlowFactor + playerDt * recoverRate);
+    this.hitZOffset = Math.max(0, this.hitZOffset - playerDt * (state.overdriveMode ? 2.2 : 1.1));
+
     // Keep Lily cleanly offset to the side of Wiwi while tracking the laser dot
     const sideOffset = cat.x >= 0 ? -1.85 : 1.85;
     const desiredX = THREE.MathUtils.clamp(laserX * 0.65 + sideOffset, -4.6, 4.6);
     this.x += (desiredX - this.x) * smooth;
 
-    // Rivalry Z-lead: if Wiwi is behind the 14,000m pace, Lily edges slightly ahead!
+    // Rivalry Z-lead: tracks threshold pace, plus slight overdrive forward push while keeping obstacle hindrance fair
     const expectedDist = (state.runElapsed / RUN_DURATION_SECONDS) * TARGET_CATCH_DISTANCE;
     const paceRatio = (state.distance - expectedDist) / 900; // + ahead, - behind
-    const desiredZ = THREE.MathUtils.clamp(-0.6 - paceRatio * 1.1, -2.0, 0.85);
-    this.z += (desiredZ - this.z) * (1 - Math.exp(-3.0 * playerDt));
+    const overdrivePush = state.overdriveMode ? Math.min(0.45, Math.max(0, state.runElapsed - 179.0) * 0.012) : 0;
+    const desiredZ = THREE.MathUtils.clamp(-0.6 - paceRatio * 1.1 - overdrivePush + this.hitZOffset, -2.15, 1.15);
+    this.z += (desiredZ - this.z) * (1 - Math.exp(-3.8 * playerDt));
 
+    const overdriveSpeedRamp = state.overdriveMode ? Math.max(0, state.runElapsed - 179.0) * 0.014 : 0;
     this.animator.play('run_rear');
-    this.animator.setPlaybackRate(0.85 + state.normalizedSpeed * 1.0);
+    this.animator.setPlaybackRate((0.85 + state.normalizedSpeed * 1.1 + overdriveSpeedRamp) * this.hitSlowFactor);
     this.animator.update(playerDt);
 
     const overdrive = state.overdriveMode ? 1.0 : 0.0;

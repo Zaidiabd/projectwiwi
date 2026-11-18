@@ -28,8 +28,8 @@ An interactive 2.5D browser speed-running experience built with Three.js (WebGL 
 - `75s`: Fourth space-time tear; hyperstorm escalation.
 - `136s – 142s`: **Stage II Temporal Burst** (golden-crimson time-dilation overdrive) leading into Tear V (`142s`).
 - `142s – 216s`: **TEAR V** — Tactical **`! RIVAL DETECTED !`** warning alert triggers as big long-haired black-and-white cat **Lily** joins the chase alongside Wiwi (triggering Wiwi's pulsing `💢` anger symbol) in a race to clear the `23,000 m` threshold.
-- `179s`: **Dual Overdrive Powerup** halfway through TEAR V — both Wiwi and Lily erupt into synchronized Overdrive (electric cyan/crimson plasma rim highlights, swirling energy auras & orbiting halo rings on both cats, thick red/black/blue lightning on Wiwi paired with emerald/crimson/black lightning on Lily, and supersonic smeared speed afterimages).
-- `216s`: Both cats leap through the final rift into abrupt silence inside a quiet living room; if `distance >= 23,000 m`, Wiwi catches the laser while Lily is shocked (`UNIVERSE DESTROYED. LASER ACQUIRED.`); otherwise Lily steals it while Wiwi belly-flops (`UNIVERSE DESTROYED. LILY STOLE THE LASER.`).
+- `179s`: **Dual Overdrive Powerup** halfway through TEAR V — both Wiwi and Lily erupt into synchronized Overdrive (electric cyan/crimson plasma rim highlights, swirling energy auras & orbiting halo rings on both cats, thick red/black/blue lightning on Wiwi paired with emerald/crimson/black lightning on Lily, supersonic smeared afterimages). Both cats continue gaining speed while being hindered by only 20% on obstacle impacts, and screen glass cracks creep inward bit by bit across tears until climax.
+- `216s`: Both cats leap into the final Act V climax, completely **smashing the cracked screen open** into flying glass shards that scatter to reveal abrupt silence inside a quiet living room; if `distance >= 23,000 m`, Wiwi catches the laser while Lily is shocked (`UNIVERSE DESTROYED. LASER ACQUIRED.`); otherwise Lily steals it while Wiwi belly-flops (`UNIVERSE DESTROYED. LILY STOLE THE LASER.`).
 
 ## Running Locally
 

@@ -269,4 +269,36 @@ export class ProceduralAudio {
       osc.stop(t + 0.18);
     });
   }
+
+  playScreenSmash() {
+    const now = this.ctx.currentTime;
+    // Deep dimensional breach thud + explosive crystalline screen-smash scatter
+    const sub = this.ctx.createOscillator();
+    const subG = this.ctx.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(160, now);
+    sub.frequency.exponentialRampToValueAtTime(34, now + 0.38);
+    subG.gain.setValueAtTime(0.42, now);
+    subG.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+    sub.connect(subG);
+    subG.connect(this.fxGain);
+    sub.start(now);
+    sub.stop(now + 0.45);
+
+    const shardFreqs = [1650, 2240, 2980, 3690, 4520, 5400];
+    shardFreqs.forEach((f, idx) => {
+      const t = now + idx * 0.018;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f, t);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.54, t + 0.22);
+      g.gain.setValueAtTime(0.11, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
+      osc.connect(g);
+      g.connect(this.fxGain);
+      osc.start(t);
+      osc.stop(t + 0.25);
+    });
+  }
 }

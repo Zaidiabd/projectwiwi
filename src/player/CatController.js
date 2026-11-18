@@ -307,17 +307,21 @@ export class CatController {
     this.animator.play('jump', { restart: true });
   }
 
-  applyImpactSlowdown() {
-    this.speed = Math.max(8, this.speed * 0.62);
-    this.squashX = 1.18;
-    this.squashY = 0.84;
+  applyImpactSlowdown(isOverdrive = false) {
+    // After Dual Overdrive (179s+), obstacles only hinder by 20% (retain 80% speed)
+    const retain = isOverdrive ? 0.80 : 0.62;
+    const floor = isOverdrive ? 24 : 8;
+    this.speed = Math.max(floor, this.speed * retain);
+    this.squashX = isOverdrive ? 1.10 : 1.18;
+    this.squashY = isOverdrive ? 0.90 : 0.84;
   }
 
   update(playerDt, input, state, laserX, worldScale) {
     // 1. Speed & boost simulation escalating through each tear stage + Dual Overdrive (179s+) + pickup surge
     const tearEscalation = state.tearCount * 12;
     const stage2Bonus = state.stage2BurstActive ? 22 : 0;
-    const overdriveBonus = state.overdriveMode ? 22 : 0;
+    const overdriveClimb = state.overdriveMode ? Math.max(0, state.runElapsed - 179.0) * 1.15 : 0;
+    const overdriveBonus = state.overdriveMode ? 22 + overdriveClimb : 0;
     const pickupMult = state.surgeTimer > 0 ? 1.18 : 1.0;
     const baseMaxSpeed = (28 + state.actIndex * 8 + tearEscalation + stage2Bonus + overdriveBonus) * pickupMult;
     const boostMaxSpeed = (48 + state.actIndex * 10 + tearEscalation * 1.2 + stage2Bonus * 1.15 + overdriveBonus * 1.25) * pickupMult;
@@ -336,7 +340,9 @@ export class CatController {
 
     if (input.forward || state.hasMovedOnce) {
       const cruiseFloor = state.hasMovedOnce ? (input.forward ? targetMax + slipBonus : 14 + state.tearCount * 4) : 0;
-      const accelRate = input.forward ? (state.isBoosting ? 28 : 16) : 5.5;
+      const accelRate = input.forward
+        ? (state.isBoosting ? (state.overdriveMode ? 44 : 28) : (state.overdriveMode ? 28 : 16))
+        : 5.5;
       if (this.speed < cruiseFloor) {
         this.speed = Math.min(cruiseFloor, this.speed + accelRate * playerDt);
       } else {
@@ -354,7 +360,7 @@ export class CatController {
 
     state.speed = this.speed;
     state.peakSpeed = Math.max(state.peakSpeed, this.speed);
-    state.normalizedSpeed = Math.min(1, this.speed / 138);
+    state.normalizedSpeed = Math.min(1, this.speed / 185);
 
     // 2. Lateral steering (snappy, controlled at high speeds, no awkward sideways slide)
     const steerInput = (input.right ? 1 : 0) - (input.left ? 1 : 0);

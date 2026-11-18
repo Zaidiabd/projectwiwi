@@ -157,8 +157,13 @@ high-speed intensity:
     natural coats intact: pulsing multi-flame plasma auras, orbiting
     energy halo rings, glowing silhouette rims, thick red/black/blue
     lightning on Wiwi paired with emerald/crimson/black lightning and
-    sparks on Lily, plus supersonic smeared afterimages.
--   `216s`: Final leap into Act 5 (`The Laser Reveal`): clearing
+    sparks on Lily, plus supersonic smeared afterimages. After `179s`,
+    both cats are hindered by only 20% on obstacle hits and keep
+    gaining speed continuously while Voronoi screen-glass fractures
+    creep inward bit by bit across tears.
+-   `216s`: Final dual leap into Act 5 (`The Laser Reveal`): both cats
+    **smash the cracked screen open** into scattering glass shards as
+    they breach into abrupt silence in the quiet living room. Clearing
     `>= 23,000 m` lets Wiwi beat Lily to the laser (`UNIVERSE DESTROYED.
     LASER ACQUIRED.`); falling short lets Lily steal it instead.
 

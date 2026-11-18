@@ -112,7 +112,7 @@ export class ObstacleSystem {
     }
   }
 
-  update(worldDt, cat, state, onHit, onPhase, onShieldAbsorb) {
+  update(worldDt, cat, state, onHit, onPhase, onShieldAbsorb, lily = null, onLilyHit = null) {
     if (state.actIndex < 1 || state.actIndex >= 4 || state.runElapsed > 212) {
       this.mesh.visible = false;
       this.pylonMesh.visible = false;
@@ -165,9 +165,26 @@ export class ObstacleSystem {
           } else if (state.shieldActive) {
             if (onShieldAbsorb) onShieldAbsorb();
           } else {
-            cat.applyImpactSlowdown();
+            cat.applyImpactSlowdown(state.overdriveMode);
             if (onHit) onHit();
           }
+        }
+      }
+
+      if (
+        it.active &&
+        it.hitCooldown <= 0 &&
+        state.tearCount >= 5 &&
+        lily &&
+        lily.group.visible &&
+        Math.abs(it.z - lily.z) < 0.9 &&
+        Math.abs(it.x - lily.x) < 0.82
+      ) {
+        it.hitCooldown = 1.0;
+        it.active = false;
+        if (!phaseProtected) {
+          lily.applyImpactSlowdown(state.overdriveMode);
+          if (onLilyHit) onLilyHit(lily.x, lily.z);
         }
       }
 
@@ -245,9 +262,26 @@ export class ObstacleSystem {
           } else if (state.shieldActive) {
             if (onShieldAbsorb) onShieldAbsorb();
           } else {
-            cat.applyImpactSlowdown();
+            cat.applyImpactSlowdown(state.overdriveMode);
             if (onHit) onHit();
           }
+        }
+      }
+
+      if (
+        g.active &&
+        g.hitCooldown <= 0 &&
+        state.tearCount >= 5 &&
+        lily &&
+        lily.group.visible &&
+        Math.abs(g.z - lily.z) < 0.9 &&
+        Math.abs(g.x - lily.x) < 0.82
+      ) {
+        g.hitCooldown = 1.0;
+        g.active = false;
+        if (!phaseProtected) {
+          lily.applyImpactSlowdown(state.overdriveMode);
+          if (onLilyHit) onLilyHit(lily.x, lily.z);
         }
       }
 

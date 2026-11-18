@@ -93,6 +93,8 @@ export class Game {
     this.composer = null;
     this.bloomPass = null;
     this.compositePass = null;
+    this.crackValue = 0;
+    this.shatterProgress = 0;
     this.initPostProcessing();
 
     this.quality.onChange(() => this.applyQuality());
@@ -336,6 +338,8 @@ export class Game {
     this.touch.reset();
     this.flashValue = 0;
     this.rippleValue = 0;
+    this.crackValue = 0;
+    this.shatterProgress = 0;
     this.overclockSlowmoTimer = 0;
   }
 
@@ -343,6 +347,8 @@ export class Game {
     this.state.phase = 'ending';
     this.state.endingStep = 0;
     this.state.endingTimer = 0;
+    this.crackValue = Math.max(this.crackValue, 0.96);
+    this.shatterProgress = 0;
     this.state.completeRun();
     this.touch.setVisible(false);
     this.hud.setVisible(false);
@@ -355,11 +361,18 @@ export class Game {
     const t = this.state.endingTimer;
     const wiwiWon = this.state.wiwiWon;
 
+    if (this.shatterProgress > 0 && this.shatterProgress < 1.0) {
+      this.shatterProgress = Math.min(1.0, this.shatterProgress + realDt * 1.18);
+      this.crackValue = Math.max(0, 1.0 - this.shatterProgress * 1.25);
+    }
+
     if (this.state.endingStep === 0 && t >= 0.85) {
-      // Abrupt silence + dimensional flash
+      // Right after both Wiwi & Lily jump: screen SMASHES open into quiet Act V living room!
       this.state.endingStep = 1;
-      this.flashValue = 0.92;
+      this.flashValue = 0.85;
+      this.shatterProgress = 0.02;
       this.audio.cutToSilence();
+      this.audio.playScreenSmash();
       this.afterimages.reset();
       this.lightning.reset();
       this.rift.reset();
@@ -571,6 +584,10 @@ export class Game {
             this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0, '#34d399', 14);
             this.audio.playPhaseShimmer();
             this.hud.showBanner('AEGIS SHIELD', 'HAZARD ABSORBED • ZERO SLOWDOWN!', '#34d399', 1.8);
+          },
+          this.lily,
+          (lx, lz) => {
+            this.speedEffects.spawnImpactBurst(lx, 0.6, lz, '#fb7185', 10);
           }
         );
         this.powerups.update(this.time.worldDt, this.cat, this.state, (spec, px, pz) => {
@@ -613,9 +630,27 @@ export class Game {
       this.environment.laserHalo.scale.setScalar(1 + Math.sin(this.time.realElapsed * 4) * 0.12);
     }
 
-    // Post-processing uniforms
+    // Post-processing uniforms + bit-by-bit screen crack escalation -> full smash on Act V leap
     this.flashValue = Math.max(0, this.flashValue - realDt * 1.9);
     this.rippleValue = Math.max(0, this.rippleValue - realDt * 1.6);
+    if (this.state.phase === 'playing') {
+      const overdriveCrackRamp = this.state.overdriveMode
+        ? Math.min(0.18, Math.max(0, (this.state.runElapsed - 179.0) / 36.0) * 0.18)
+        : 0;
+      const targetCrack =
+        this.state.tearCount === 0
+          ? 0
+          : this.state.tearCount === 1
+            ? 0.18
+            : this.state.tearCount === 2
+              ? 0.34
+              : this.state.tearCount === 3
+                ? 0.50
+                : this.state.tearCount === 4
+                  ? 0.68
+                  : 0.82 + overdriveCrackRamp;
+      this.crackValue += (targetCrack - this.crackValue) * (1 - Math.exp(-3.2 * realDt));
+    }
     if (this.compositePass) {
       const isPlaying = this.state.phase === 'playing';
       const spd = isPlaying ? this.state.normalizedSpeed : 0;
@@ -644,6 +679,9 @@ export class Game {
       this.compositePass.uniforms.uVignette.value =
         this.state.phase === 'ending' || this.state.phase === 'ended' ? 0.14 : 0.26 + spd * 0.14;
       this.compositePass.uniforms.uFlash.value = this.flashValue;
+      this.compositePass.uniforms.uCrackAmount.value = this.crackValue;
+      this.compositePass.uniforms.uShatterProgress.value =
+        this.shatterProgress >= 1.0 ? 0.0 : this.shatterProgress;
     }
 
     if (this.composer && this.quality.config.postProcessing) {
