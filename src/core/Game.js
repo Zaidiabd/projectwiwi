@@ -23,6 +23,7 @@ import { ObstacleSystem } from '../world/ObstacleSystem.js';
 import { AfterimageSystem } from '../effects/AfterimageSystem.js';
 import { LightningSystem } from '../effects/LightningSystem.js';
 import { RiftEffect } from '../effects/RiftEffect.js';
+import { SpeedEffects } from '../effects/SpeedEffects.js';
 import { CompositeShader } from '../effects/CompositeShader.js';
 
 import { AudioManager } from '../audio/AudioManager.js';
@@ -68,6 +69,7 @@ export class Game {
     );
     this.lightning = new LightningSystem(this.scene);
     this.rift = new RiftEffect(this.scene);
+    this.speedEffects = new SpeedEffects(this.scene);
 
     // Audio & UI
     this.audio = new AudioManager();
@@ -111,6 +113,7 @@ export class Game {
     };
 
     this.flashValue = 0;
+    this.rippleValue = 0;
     this.overclockSlowmoTimer = 0;
     this.contextLost = false;
     this.lastFrameMs = performance.now();
@@ -171,6 +174,7 @@ export class Game {
     this.afterimages.setQualityCount(cfg.afterimagePool);
     this.lightning.setQualityCount(cfg.lightningBolts);
     this.obstacles.setQualityCount(cfg.obstacles);
+    this.speedEffects.setQualityCount(cfg.id);
   }
 
   bindEvents() {
@@ -259,6 +263,14 @@ export class Game {
     this.state.burstTimer = 2.4 * this.state.burstCharge;
     this.state.burstCharge = 0;
     this.flashValue = this.state.burstStage === 2 ? 0.36 : 0.24;
+    this.rippleValue = 0.65;
+    this.speedEffects.spawnShockwave(
+      this.cat.x,
+      this.cat.y + 0.55,
+      0.1,
+      this.state.burstStage === 2 ? '#ffbe3b' : '#22e6ff',
+      9.5
+    );
     this.audio.playTemporalBurst();
   }
 
@@ -316,8 +328,10 @@ export class Game {
     this.afterimages.reset();
     this.lightning.reset();
     this.rift.reset();
+    this.speedEffects.reset();
     this.touch.reset();
     this.flashValue = 0;
+    this.rippleValue = 0;
     this.overclockSlowmoTimer = 0;
   }
 
@@ -463,12 +477,17 @@ export class Game {
         } else if (events.enteredBurst2) {
           // 136s-142s: Distinct Stage 2 Temporal Burst
           this.flashValue = 0.55;
+          this.rippleValue = 0.75;
+          this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.55, 0.1, '#ffbe3b', 11.5);
           this.audio.playTemporalBurst();
           this.hud.showBanner('BURST II // 136s', 'STAGE II TEMPORAL BURST ENGAGED', '#ffbe3b', 3.2);
         } else if (events.enteredSaiyan) {
           // 179s: Halfway through TEAR V -> Wiwi Saiyan Powerup!
           this.flashValue = 0.72;
+          this.rippleValue = 1.0;
           this.overclockSlowmoTimer = 0.9;
+          this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.55, 0.1, '#fef08a', 14.0, 0.7);
+          this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0.1, '#fef08a', 18);
           this.audio.playTemporalBurst();
           this.audio.playPhaseShimmer();
           this.hud.showBanner('POWERUP // 179s', 'SAIYAN OVERDRIVE • RED/BLACK/BLUE VOLTAGE', '#fef08a', 3.4);
@@ -481,7 +500,9 @@ export class Game {
       if (events.newTearTriggered && this.state.phase === 'playing') {
         // Space-time tear breach flash + brief impact surge at 38s, 50s, 62s, 75s, 142s
         this.flashValue = Math.min(0.85, 0.42 + this.state.tearCount * 0.08);
+        this.rippleValue = 0.85;
         this.overclockSlowmoTimer = 0.65;
+        this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.55, 0.1, '#a855f7', 12.0);
         this.audio.playPhaseShimmer();
 
         if (this.state.tearCount === 1) {
@@ -516,21 +537,25 @@ export class Game {
           this.state,
           () => {
             this.flashValue = 0.16;
+            this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0, '#ff2a4b', 14);
             this.audio.playImpact();
           },
           () => {
             this.state.boostEnergy = Math.min(1, this.state.boostEnergy + 0.15);
+            this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0, '#22e6ff', 10);
             this.audio.playPhaseShimmer();
           }
         );
         this.afterimages.update(this.time.worldDt, this.cat, this.state);
         this.lightning.update(this.time.worldDt, this.cat, this.state, beatEnergy);
         this.rift.update(this.time.worldDt, realDt, this.state, beatEnergy);
+        this.speedEffects.update(this.time.worldDt, realDt, this.cat, this.lily, this.state);
         this.cameraCtrl.update(realDt, this.cat, this.state, beatEnergy);
         this.hud.update(this.state, this.time, this.renderer, this.quality, this.audio.getTrackTime());
         this.touch.updateBurstUI(this.state);
       }
     } else if (this.state.phase === 'ending' || this.state.phase === 'ended') {
+      this.speedEffects.update(realDt, realDt, this.cat, this.lily, this.state);
       this.updateEnding(realDt);
     } else if (this.state.phase === 'start') {
       // Gentle idle animation on start screen
@@ -541,12 +566,28 @@ export class Game {
 
     // Post-processing uniforms
     this.flashValue = Math.max(0, this.flashValue - realDt * 1.9);
+    this.rippleValue = Math.max(0, this.rippleValue - realDt * 1.6);
     if (this.compositePass) {
       const isPlaying = this.state.phase === 'playing';
       const spd = isPlaying ? this.state.normalizedSpeed : 0;
       const anyBurst = this.state.burstActive || this.state.stage2BurstActive || this.state.saiyanMode;
+      this.compositePass.uniforms.uTime.value = this.time.realElapsed;
       this.compositePass.uniforms.uSpeedBlur.value =
         spd > 0.22 ? (spd - 0.22) * 0.98 + (anyBurst ? 0.42 : 0) : 0;
+      this.compositePass.uniforms.uSpeedLines.value =
+        isPlaying && (spd > 0.34 || anyBurst)
+          ? Math.min(1.25, Math.max(0, (spd - 0.30) * 1.4) + (this.state.saiyanMode ? 0.45 : anyBurst ? 0.25 : 0))
+          : 0;
+      this.compositePass.uniforms.uSpeedLineColor.value.set(
+        this.state.saiyanMode
+          ? '#fef08a'
+          : this.state.stage2BurstActive
+            ? '#ffbe3b'
+            : this.state.tearCount >= 5
+              ? '#ff2a4b'
+              : '#22e6ff'
+      );
+      this.compositePass.uniforms.uRipple.value = this.rippleValue;
       this.compositePass.uniforms.uChromatic.value =
         isPlaying && (this.state.actIndex >= 2 || anyBurst)
           ? 0.002 + spd * 0.0068 + this.state.tearCount * 0.0008 + (this.state.saiyanMode ? 0.0025 : 0) + beatEnergy * 0.002

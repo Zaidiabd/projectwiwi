@@ -107,8 +107,9 @@ export class HUD {
     // Speedometer + recorded peak + gradual reddening + vibration
     this.speedEl.textContent = state.speed.toFixed(1);
     this.peakSpeedEl.textContent = state.peakSpeed.toFixed(1);
-    const barPct = Math.min(100, (state.speed / 145) * 100);
+    const barPct = Math.min(100, (state.speed / 172) * 100);
     this.speedBarEl.style.width = `${barPct.toFixed(1)}%`;
+    this.speedCardEl.classList.toggle('saiyan-active', state.saiyanMode);
 
     const heat = Math.min(1, Math.max(0, (state.speed - 22) / 108));
     let r, g, b;

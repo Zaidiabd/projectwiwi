@@ -119,6 +119,21 @@ export class RiftEffect {
     this.light.position.set(0, 1.5, 4);
     this.group.add(this.light);
 
+    // Jagged 3D glass-fracture blades framing the dimensional tear mouth
+    const shardGeom = new THREE.ConeGeometry(0.45, 3.2, 3);
+    this.fractureMat = new THREE.MeshBasicMaterial({
+      color: '#22e6ff',
+      transparent: true,
+      opacity: 0.72,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    this.fractureCount = 12;
+    this.fractureMesh = new THREE.InstancedMesh(shardGeom, this.fractureMat, this.fractureCount);
+    this.fractureMesh.frustumCulled = false;
+    this.group.add(this.fractureMesh);
+    this.dummy = new THREE.Object3D();
+
     this.reset();
   }
 
@@ -218,5 +233,20 @@ export class RiftEffect {
     this.ringMatA.opacity = intensity * (0.58 + beatEnergy * 0.35);
     this.ringMatB.opacity = intensity * (0.58 + beatEnergy * 0.35);
     this.light.intensity = intensity * (14 + state.tearCount * 2.5);
+
+    // Jagged fracture shards framing the portal mouth
+    this.fractureMat.color.copy(this.ringMatA.color);
+    this.fractureMat.opacity = intensity * (0.55 + beatEnergy * 0.35);
+    const rotBase = this.discMat.uniforms.uTime.value * 0.55;
+    for (let i = 0; i < this.fractureCount; i++) {
+      const ang = (i / this.fractureCount) * Math.PI * 2 + rotBase;
+      const rad = 5.1 + Math.sin(ang * 3 + rotBase * 2) * 0.45;
+      this.dummy.position.set(Math.cos(ang) * rad, Math.sin(ang) * rad, (i % 2 === 0 ? 0.6 : -0.6));
+      this.dummy.rotation.set(0, 0, ang + Math.PI * 0.5);
+      this.dummy.scale.set(0.85, 0.9 + beatEnergy * 0.35, 0.85);
+      this.dummy.updateMatrix();
+      this.fractureMesh.setMatrixAt(i, this.dummy.matrix);
+    }
+    this.fractureMesh.instanceMatrix.needsUpdate = true;
   }
 }

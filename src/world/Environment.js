@@ -64,6 +64,56 @@ function createGlowDiscTexture(innerColor, outerColor) {
   return tex;
 }
 
+const SKY_VERTEX = /* glsl */ `
+  varying vec3 vDir;
+  void main() {
+    vDir = normalize(position);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const SKY_FRAGMENT = /* glsl */ `
+  uniform float uTime;
+  uniform vec3 uSkyTop;
+  uniform vec3 uSkyHorizon;
+  uniform vec3 uNebulaColor;
+  uniform float uNebulaStrength;
+  varying vec3 vDir;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+      f.y
+    );
+  }
+
+  void main() {
+    float h = clamp(vDir.y, 0.0, 1.0);
+    vec3 col = mix(uSkyHorizon, uSkyTop, pow(h, 0.65));
+
+    // Swirling cosmic nebula band across upper sky
+    vec2 uv = vDir.xz / (h + 0.35);
+    float n1 = noise(uv * 1.4 + vec2(uTime * 0.06, -uTime * 0.12));
+    float n2 = noise(uv * 3.1 - vec2(uTime * 0.09, uTime * 0.05));
+    float neb = smoothstep(0.45, 0.92, n1 * 0.65 + n2 * 0.35);
+    col += uNebulaColor * neb * uNebulaStrength * smoothstep(0.02, 0.4, h);
+
+    // Subtle crisp distant starfield
+    float star = step(0.9965, hash(floor(vDir.xz * 220.0 + floor(vDir.y * 120.0))));
+    col += vec3(0.75, 0.9, 1.0) * star * smoothstep(0.05, 0.3, h) * 0.65;
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
 export class Environment {
   constructor(scene) {
     this.scene = scene;
@@ -77,6 +127,25 @@ export class Environment {
     this.dirLight = new THREE.DirectionalLight('#bae6fd', 0.9);
     this.dirLight.position.set(4, 12, 8);
     this.scene.add(this.dirLight);
+
+    // Procedural Cosmic Sky Dome
+    const skyGeom = new THREE.SphereGeometry(220, 28, 18);
+    this.skyMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uSkyTop: { value: new THREE.Color('#03050c') },
+        uSkyHorizon: { value: new THREE.Color('#0b172a') },
+        uNebulaColor: { value: new THREE.Color('#22e6ff') },
+        uNebulaStrength: { value: 0.25 }
+      },
+      vertexShader: SKY_VERTEX,
+      fragmentShader: SKY_FRAGMENT,
+      side: THREE.BackSide,
+      depthWrite: false,
+      fog: false
+    });
+    this.skyMesh = new THREE.Mesh(skyGeom, this.skyMat);
+    this.scene.add(this.skyMesh);
 
     // Floor plane with custom grid/void/peaceful shader
     const floorGeom = new THREE.PlaneGeometry(180, 260, 1, 1);
@@ -165,23 +234,86 @@ export class Environment {
     baseboard.position.set(0, 0.14, -5.2);
     this.roomGroup.add(baseboard);
 
-    const sofa = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.35, 1.5), new THREE.MeshStandardMaterial({ color: '#222836', roughness: 0.85 }));
-    sofa.position.set(-1.6, 0.68, -4.1);
-    this.roomGroup.add(sofa);
+    // Cozy multi-part sofa (base, back cushions, armrests, throw pillow)
+    const sofaMat = new THREE.MeshStandardMaterial({ color: '#242b3b', roughness: 0.85 });
+    const cushionMat = new THREE.MeshStandardMaterial({ color: '#2e374b', roughness: 0.8 });
+    const sofaBase = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.55, 1.45), sofaMat);
+    sofaBase.position.set(-1.6, 0.34, -4.1);
+    this.roomGroup.add(sofaBase);
 
-    // Warm standing floor lamp on right
+    const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.95, 0.36), sofaMat);
+    sofaBack.position.set(-1.6, 0.98, -4.65);
+    this.roomGroup.add(sofaBack);
+
+    for (const ax of [-3.65, 0.45]) {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.72, 1.45), cushionMat);
+      arm.position.set(ax, 0.62, -4.1);
+      this.roomGroup.add(arm);
+    }
+
+    const pillow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.45, 0.22),
+      new THREE.MeshStandardMaterial({ color: '#b45309', roughness: 0.9 })
+    );
+    pillow.position.set(-3.1, 0.82, -4.25);
+    pillow.rotation.z = 0.22;
+    this.roomGroup.add(pillow);
+
+    // Wall picture frame behind sofa
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 1.05, 0.08),
+      new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.6 })
+    );
+    frame.position.set(-1.6, 2.35, -5.12);
+    this.roomGroup.add(frame);
+
+    // Low wooden coffee table on the right
+    const tableMat = new THREE.MeshStandardMaterial({ color: '#423328', roughness: 0.75 });
+    const tableTop = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.1, 0.95), tableMat);
+    tableTop.position.set(2.3, 0.52, -2.0);
+    this.roomGroup.add(tableTop);
+    for (const [lx, lz] of [[-0.75, -0.38], [0.75, -0.38], [-0.75, 0.38], [0.75, 0.38]]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.025, 0.52, 6), tableMat);
+      leg.position.set(2.3 + lx, 0.26, -2.0 + lz);
+      this.roomGroup.add(leg);
+    }
+
+    // Warm standing floor lamp on right + dust motes
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3.0, 8), new THREE.MeshStandardMaterial({ color: '#475569', metalness: 0.6 }));
-    pole.position.set(2.9, 1.5, -3.5);
+    pole.position.set(3.2, 1.5, -3.5);
     this.roomGroup.add(pole);
 
     const shade = new THREE.Mesh(
       new THREE.ConeGeometry(0.48, 0.55, 16, 1, true),
       new THREE.MeshBasicMaterial({ color: '#fde68a', side: THREE.DoubleSide })
     );
-    shade.position.set(2.9, 3.0, -3.5);
+    shade.position.set(3.2, 3.0, -3.5);
     this.roomGroup.add(shade);
 
-    // Subtle red laser-pointer beam descending onto the floor dot during Step 2
+    const motePos = new Float32Array(42 * 3);
+    for (let i = 0; i < 42; i++) {
+      motePos[i * 3] = (Math.random() - 0.5) * 6.0;
+      motePos[i * 3 + 1] = 0.2 + Math.random() * 2.8;
+      motePos[i * 3 + 2] = -3.8 + Math.random() * 3.8;
+    }
+    const moteGeom = new THREE.BufferGeometry();
+    moteGeom.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
+    this.dustMotes = new THREE.Points(
+      moteGeom,
+      new THREE.PointsMaterial({ color: '#fde68a', size: 0.045, transparent: true, opacity: 0.45 })
+    );
+    this.roomGroup.add(this.dustMotes);
+
+    // Subtle red laser-pointer barrel & beam descending onto the floor dot during Step 2
+    const pointerMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.035, 0.035, 0.32, 10),
+      new THREE.MeshStandardMaterial({ color: '#cbd5e1', metalness: 0.85, roughness: 0.2 })
+    );
+    pointerMesh.position.set(2.8, 2.3, 1.8);
+    pointerMesh.lookAt(0, 0.03, -0.85);
+    pointerMesh.rotateX(Math.PI / 2);
+    this.roomGroup.add(pointerMesh);
+
     const beamGeom = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(2.8, 2.3, 1.8),
       new THREE.Vector3(0, 0.03, -0.85)
@@ -211,6 +343,7 @@ export class Environment {
     this.laserGroup.position.set(0, 0, -7.2);
     this.slipstreamLine.visible = true;
     this.roomGroup.visible = false;
+    this.skyMesh.visible = true;
 
     this.scene.background.set('#05070d');
     this.scene.fog.color.set('#05070d');
@@ -323,6 +456,14 @@ export class Environment {
     this.scene.fog.density += (targetFog - this.scene.fog.density) * smooth;
     this.floorMat.uniforms.uLineColor.value.lerp(new THREE.Color(targetLine), smooth);
     this.floorMat.uniforms.uGridStrength.value += (targetGrid - this.floorMat.uniforms.uGridStrength.value) * smooth;
+
+    // Sky dome nebula & horizon evolution
+    this.skyMesh.visible = true;
+    this.skyMat.uniforms.uTime.value += worldDt * (0.8 + state.normalizedSpeed * 1.8);
+    this.skyMat.uniforms.uSkyHorizon.value.copy(this.scene.background);
+    this.skyMat.uniforms.uNebulaColor.value.lerp(new THREE.Color(targetLine), smooth);
+    this.skyMat.uniforms.uNebulaStrength.value =
+      0.18 + state.tearCount * 0.1 + (state.saiyanMode ? 0.25 : 0) + beatEnergy * 0.15;
   }
 
   updateEnding(realDt, step) {
@@ -334,8 +475,10 @@ export class Environment {
     }
 
     // Peaceful quiet living room aesthetic
+    this.skyMesh.visible = false;
     this.roomGroup.visible = true;
     this.pointerBeam.visible = step < 3;
+    this.dustMotes.rotation.y += realDt * 0.04;
     const smooth = 1 - Math.exp(-3.5 * realDt);
     this.floorMat.uniforms.uPeaceful.value += (1 - this.floorMat.uniforms.uPeaceful.value) * smooth;
     this.floorMat.uniforms.uGridStrength.value = 0;
