@@ -183,22 +183,25 @@ export class SpeedEffects {
         );
       }
 
-      // Lily paw-trail sparks during TEAR V (emerald & white!)
+      // Lily paw-trail sparks during TEAR V (emerald & white -> golden/emerald Saiyan overdrive at 179s+)
       if (state.tearCount >= 5 && lily.group.visible) {
         this.lilyEmitTimer += worldDt;
-        if (this.lilyEmitTimer >= 0.036) {
+        const lilyInterval = state.saiyanMode ? 0.020 : 0.036;
+        if (this.lilyEmitTimer >= lilyInterval) {
           this.lilyEmitTimer = 0;
-          const col = Math.random() > 0.45 ? '#34d399' : '#f1f5f9';
+          const col = state.saiyanMode
+            ? (Math.random() < 0.55 ? '#fde047' : Math.random() < 0.5 ? '#34d399' : '#fef08a')
+            : (Math.random() > 0.45 ? '#34d399' : '#f1f5f9');
           this.emitSpark(
-            lily.x + (Math.random() - 0.5) * 0.5,
+            lily.x + (Math.random() - 0.5) * 0.55,
             0.08,
             lily.z + 0.25,
-            (Math.random() - 0.5) * 2.0,
-            1.0 + Math.random() * 2.0,
-            state.speed * 0.52,
+            (Math.random() - 0.5) * 2.2,
+            1.1 + Math.random() * 2.2,
+            state.speed * 0.54,
             col,
-            0.32,
-            1.1
+            state.saiyanMode ? 0.42 : 0.32,
+            state.saiyanMode ? 1.45 : 1.1
           );
         }
       }

@@ -133,8 +133,12 @@ soundtrack timeline (`runElapsed`), while player steering, boost,
 slipstream tracking, and obstacle avoidance drive velocity, distance, and
 high-speed intensity:
 
--   `0s--26s`: Quiet opening (`Act 1`) -> Acceleration corridor (`Act 2`);
+-   `0s--18s`: Quiet opening (`Act 1`) -> Acceleration corridor (`Act 2`);
     `Space` Temporal Burst stays locked until `26s`.
+-   `18s--25.65s`: **24-FPS Projection Speedster** rival homage snaps
+    ahead along stepped 24-FPS translucent glass projection frames until
+    Wiwi surges past right before the `26s` Overclock, shattering every
+    projection pane and leaving him tumbling in the dust.
 -   `26s`: Overclock slow-motion animation + `Space` Temporal Burst
     unlocks (`Stage 1`).
 -   `38s`: First space-time fabric tear; electric charges emanate from
@@ -146,13 +150,15 @@ high-speed intensity:
 -   `75s`: Fourth space-time tear; hyperstorm escalation.
 -   `136s--142s`: **Stage 2 Temporal Burst** (distinct golden-crimson
     time-dilation surge) leading into the fifth space-time tear at `142s`.
--   `142s--216s`: **TEAR V** — Bigger long-haired black-and-white cat
+-   `142s--216s`: **TEAR V** — High-priority **`! RIVAL DETECTED !`**
+    tactical alert fires as bigger long-haired black-and-white cat
     **Lily** joins the chase alongside Wiwi while Wiwi displays an
     annoyed pulsing anger symbol (`💢`) overhead.
--   `179s`: **Saiyan Powerup** halfway through TEAR V — Wiwi's fur shifts
-    to light yellow with a pulsing golden aura, thick red/black/blue
-    ribbon lightning erupts, and supersonic smeared speed afterimages
-    surge.
+-   `179s`: **Saiyan Powerup** halfway through TEAR V — Both Wiwi and
+    Lily activate Saiyan Overdrive (Wiwi's fur turns light yellow with
+    golden aura, thick red/black/blue ribbon lightning, and supersonic
+    afterimages; Lily ignites with luminous pale-gold highlights, a
+    pulsing golden-emerald aura, and golden-emerald lightning/sparks).
 -   `216s`: Final leap into Act 5 (`The Laser Reveal`): clearing
     `>= 23,000 m` lets Wiwi beat Lily to the laser (`UNIVERSE DESTROYED.
     LASER ACQUIRED.`); falling short lets Lily steal it instead.

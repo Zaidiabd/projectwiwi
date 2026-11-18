@@ -222,4 +222,64 @@ export class ProceduralAudio {
       osc.stop(start + n.d + 0.02);
     });
   }
+
+  playRivalAlert() {
+    const now = this.ctx.currentTime;
+    // Urgent high-tech two-tone siren pulse when a rival locks onto the chase
+    [0, 0.16, 0.34].forEach((offset, i) => {
+      const start = now + offset;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      const f0 = i % 2 === 0 ? 740 : 988;
+      osc.frequency.setValueAtTime(f0, start);
+      osc.frequency.exponentialRampToValueAtTime(f0 * 1.18, start + 0.11);
+
+      const filt = this.ctx.createBiquadFilter();
+      filt.type = 'bandpass';
+      filt.frequency.value = 1400;
+      filt.Q.value = 2.2;
+
+      g.gain.setValueAtTime(0.16, start);
+      g.gain.exponentialRampToValueAtTime(0.001, start + 0.14);
+
+      osc.connect(filt);
+      filt.connect(g);
+      g.connect(this.fxGain);
+      osc.start(start);
+      osc.stop(start + 0.15);
+    });
+  }
+
+  playGlassShatter() {
+    const now = this.ctx.currentTime;
+    // High crystalline shatter + punchy sub-snap for broken 24-fps projection frames
+    const sub = this.ctx.createOscillator();
+    const subG = this.ctx.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(190, now);
+    sub.frequency.exponentialRampToValueAtTime(42, now + 0.24);
+    subG.gain.setValueAtTime(0.32, now);
+    subG.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+    sub.connect(subG);
+    subG.connect(this.fxGain);
+    sub.start(now);
+    sub.stop(now + 0.28);
+
+    const shardFreqs = [1840, 2630, 3420, 4190, 5120];
+    shardFreqs.forEach((freq, idx) => {
+      const t = now + idx * 0.022;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.62, t + 0.18);
+      g.gain.setValueAtTime(0.09, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.connect(g);
+      g.connect(this.fxGain);
+      osc.start(t);
+      osc.stop(t + 0.22);
+    });
+  }
 }

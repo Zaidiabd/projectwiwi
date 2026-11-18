@@ -20,15 +20,16 @@ An interactive 2.5D browser speed-running experience built with Three.js (WebGL 
 
 ## Timed Sequence (`216s` Audio-Synced Run)
 
-- `0s – 26s`: Quiet opening into acceleration corridor (Temporal Burst locked).
+- `0s – 18s`: Quiet opening into acceleration corridor (Temporal Burst locked).
+- `18s – 25.65s`: **24-FPS Projection Speedster Rival** darts ahead across stepped 24-FPS translucent glass projection frames until Wiwi outspeeds him right before Overclock, shattering the projection frames and blasting him backward into the dust.
 - `26s`: Overclock slow-motion beat + `Space` Temporal Burst unlocks.
 - `38s`: First space-time fabric tear; electric charges emanate from Wiwi's body.
 - `50s`: Second space-time tear; speed and electric intensity escalate.
 - `62s`: Third space-time tear; **Space Tear Anomaly** environment shift & swaying anomaly monolith obstacles.
 - `75s`: Fourth space-time tear; hyperstorm escalation.
 - `136s – 142s`: **Stage II Temporal Burst** (golden-crimson time-dilation overdrive) leading into Tear V (`142s`).
-- `142s – 216s`: **TEAR V** — Big long-haired black-and-white cat **Lily** joins the chase alongside Wiwi (triggering Wiwi's pulsing `💢` anger symbol) in a race to clear the `23,000 m` threshold.
-- `179s`: **Saiyan Powerup** halfway through TEAR V — Wiwi's fur turns luminous light-yellow with a golden aura, thick red/black/blue ribbon lightning erupts, and supersonic smeared speed afterimages surge.
+- `142s – 216s`: **TEAR V** — Tactical **`! RIVAL DETECTED !`** warning alert triggers as big long-haired black-and-white cat **Lily** joins the chase alongside Wiwi (triggering Wiwi's pulsing `💢` anger symbol) in a race to clear the `23,000 m` threshold.
+- `179s`: **Saiyan Powerup** halfway through TEAR V — both Wiwi and Lily ignite into Saiyan Overdrive (luminous light-yellow fur & aura, thick red/black/blue voltage arcs for Wiwi paired with golden-emerald aura, lightning, and sparks for Lily, plus supersonic smeared speed afterimages).
 - `216s`: Both cats leap through the final rift into abrupt silence inside a quiet living room; if `distance >= 23,000 m`, Wiwi catches the laser while Lily is shocked (`UNIVERSE DESTROYED. LASER ACQUIRED.`); otherwise Lily steals it while Wiwi belly-flops (`UNIVERSE DESTROYED. LILY STOLE THE LASER.`).
 
 ## Running Locally

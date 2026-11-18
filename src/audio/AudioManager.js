@@ -183,6 +183,14 @@ export class AudioManager {
     if (this.procedural) this.procedural.playLilySteal();
   }
 
+  playRivalAlert() {
+    if (this.procedural) this.procedural.playRivalAlert();
+  }
+
+  playGlassShatter() {
+    if (this.procedural) this.procedural.playGlassShatter();
+  }
+
   getTrackTime() {
     if (!this.hasMusicLoaded && !this.musicActive) return null;
     return Number.isFinite(this.audioEl.currentTime) ? this.audioEl.currentTime : null;

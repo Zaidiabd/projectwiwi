@@ -220,6 +220,90 @@ body,
   color: #fff;
 }
 
+/* Dramatic Rival Detected Tactical Alert */
+.rival-alert {
+  --rival-accent: #ff2a4b;
+  position: absolute;
+  top: max(130px, calc(env(safe-area-inset-top) + 116px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 9px 22px 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(16, 8, 22, 0.90), rgba(32, 8, 18, 0.84));
+  border: 2px solid var(--rival-accent);
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--rival-accent) 55%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--rival-accent) 22%, transparent);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  z-index: 25;
+  text-align: center;
+  animation: rivalPulse 0.42s ease-in-out infinite alternate;
+}
+
+.rival-alert-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: clamp(10px, 1.5vw, 11.5px);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: var(--rival-accent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--rival-accent) 65%, transparent);
+}
+
+.rival-alert-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rival-accent);
+  box-shadow: 0 0 10px var(--rival-accent);
+}
+
+.rival-alert-main {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rival-alert-name {
+  font-family: var(--font-display, var(--font-mono));
+  font-size: clamp(14px, 2.4vw, 19px);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: #ffffff;
+}
+
+.rival-alert-sub {
+  font-family: var(--font-mono);
+  font-size: clamp(10px, 1.4vw, 11.5px);
+  letter-spacing: 0.1em;
+  color: #e2e8f0;
+  opacity: 0.92;
+}
+
+@keyframes rivalPulse {
+  from {
+    transform: translateX(-50%) scale(1.0);
+    box-shadow:
+      0 0 18px color-mix(in srgb, var(--rival-accent) 45%, transparent),
+      inset 0 0 14px color-mix(in srgb, var(--rival-accent) 18%, transparent);
+  }
+  to {
+    transform: translateX(-50%) scale(1.028);
+    box-shadow:
+      0 0 32px color-mix(in srgb, var(--rival-accent) 75%, transparent),
+      inset 0 0 22px color-mix(in srgb, var(--rival-accent) 30%, transparent);
+  }
+}
+
 @keyframes bannerPop {
   from { opacity: 0; transform: translate(-50%, -8px) scale(0.96); }
   to { opacity: 1; transform: translate(-50%, 0) scale(1); }

@@ -11,6 +11,7 @@ import { GameState } from './GameState.js';
 
 import { CatController } from '../player/CatController.js';
 import { LilyController } from '../player/LilyController.js';
+import { ProjectionRival } from '../player/ProjectionRival.js';
 import { FollowCamera } from '../player/FollowCamera.js';
 import { AutopilotAI } from '../player/AutopilotAI.js';
 
@@ -59,6 +60,7 @@ export class Game {
     this.obstacles = new ObstacleSystem(this.scene);
     this.cat = new CatController(this.scene);
     this.lily = new LilyController(this.scene);
+    this.projectionRival = new ProjectionRival(this.scene);
     this.autopilot = new AutopilotAI();
 
     // VFX
@@ -318,6 +320,7 @@ export class Game {
     this.state.reset();
     this.cat.reset();
     this.lily.reset();
+    this.projectionRival.reset();
     this.autopilot.reset();
     this.cameraCtrl.reset();
     this.environment.reset();
@@ -482,12 +485,14 @@ export class Game {
           this.audio.playTemporalBurst();
           this.hud.showBanner('BURST II // 136s', 'STAGE II TEMPORAL BURST ENGAGED', '#ffbe3b', 3.2);
         } else if (events.enteredSaiyan) {
-          // 179s: Halfway through TEAR V -> Wiwi Saiyan Powerup!
+          // 179s: Halfway through TEAR V -> Wiwi & Lily Saiyan Powerup!
           this.flashValue = 0.72;
           this.rippleValue = 1.0;
           this.overclockSlowmoTimer = 0.9;
           this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.55, 0.1, '#fef08a', 14.0, 0.7);
           this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0.1, '#fef08a', 18);
+          this.speedEffects.spawnShockwave(this.lily.x, 0.35, this.lily.z, '#fde047', 10.5, 0.65);
+          this.speedEffects.spawnImpactBurst(this.lily.x, 0.85, this.lily.z, '#34d399', 16);
           this.audio.playTemporalBurst();
           this.audio.playPhaseShimmer();
           this.hud.showBanner('POWERUP // 179s', 'SAIYAN OVERDRIVE • RED/BLACK/BLUE VOLTAGE', '#fef08a', 3.4);
@@ -516,7 +521,9 @@ export class Game {
         } else if (this.state.tearCount === 5) {
           // Lily bursts into the chase at TEAR V (142s)!
           this.audio.playAnnoyedPop();
+          this.audio.playRivalAlert();
           this.hud.showBanner('TEAR V // 142s', 'LILY JOINED THE CHASE! REACH 23,000 m!', '#ff2a4b', 3.6);
+          this.hud.showRivalAlert('LILY', 'LONG-HAIRED CHALLENGER JOINED TEAR V', '#ff2a4b', 3.6);
         }
       }
 
@@ -527,6 +534,20 @@ export class Game {
         );
 
         this.lily.updateChase(this.time.playerDt, this.cat, this.state, this.environment.laserX);
+        const projEvent = this.projectionRival.update(
+          this.time.worldDt,
+          this.state,
+          this.cat,
+          this.speedEffects,
+          this.audio
+        );
+        if (projEvent === 'entered') {
+          this.audio.playRivalAlert();
+          this.hud.showRivalAlert('PROJECTION SPEEDSTER', '24-FPS TECHNIQUE ENGAGED', '#38bdf8', 3.0);
+        } else if (projEvent === 'defeated') {
+          this.flashValue = Math.max(this.flashValue, 0.24);
+          this.hud.showBanner('SPEED BLITZ // 25.6s', '24-FPS PROJECTION SHATTERED • LEFT IN THE DUST!', '#fde047', 2.4);
+        }
         this.environment.update(this.time.worldDt, realDt, this.state, beatEnergy);
         this.corridor.update(this.time.worldDt, this.state.speed, this.state.actIndex, this.state.runElapsed, beatEnergy);
         this.voidWorld.update(this.time.worldDt, this.state);
@@ -547,7 +568,7 @@ export class Game {
           }
         );
         this.afterimages.update(this.time.worldDt, this.cat, this.state);
-        this.lightning.update(this.time.worldDt, this.cat, this.state, beatEnergy);
+        this.lightning.update(this.time.worldDt, this.cat, this.state, beatEnergy, this.lily);
         this.rift.update(this.time.worldDt, realDt, this.state, beatEnergy);
         this.speedEffects.update(this.time.worldDt, realDt, this.cat, this.lily, this.state);
         this.cameraCtrl.update(realDt, this.cat, this.state, beatEnergy);

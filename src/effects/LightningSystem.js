@@ -75,8 +75,8 @@ export class LightningSystem {
     }
   }
 
-  update(worldDt, cat, state, beatEnergy = 0) {
-    // 1. Electric charges emanating directly off Wiwi's body starting at Tear #1 (38s)
+  update(worldDt, cat, state, beatEnergy = 0, lily = null) {
+    // 1. Electric charges emanating directly off Wiwi's body (and Lily during 179s+ Saiyan overdrive)
     if (state.phase === 'playing' && state.bodyChargeLevel >= 1) {
       const chargeRate = state.saiyanMode
         ? 0.018
@@ -85,6 +85,9 @@ export class LightningSystem {
       if (this.bodyChargeTimer >= chargeRate) {
         this.bodyChargeTimer = 0;
         this.triggerBodyArc(cat, state);
+        if (state.saiyanMode && lily && lily.group.visible && Math.random() < 0.72) {
+          this.triggerLilySaiyanArc(lily);
+        }
       }
     }
 
@@ -212,6 +215,40 @@ export class LightningSystem {
         blackBolt.maxLife = 0.11;
         blackBolt.life = blackBolt.maxLife;
         blackBolt.mat.opacity = 0.98;
+        blackBolt.mesh.visible = true;
+      }
+    }
+  }
+
+  triggerLilySaiyanArc(lily) {
+    const angle = Math.random() * Math.PI * 2;
+    const spread = 1.65;
+    const startX = lily.x + (Math.random() - 0.5) * 0.65;
+    const startY = lily.y + 0.45 + Math.random() * 0.85;
+    const startZ = lily.z + (Math.random() - 0.5) * 0.3;
+
+    const endX = startX + Math.cos(angle) * spread;
+    const endY = Math.max(0.08, startY + Math.sin(angle) * spread * 0.85);
+    const endZ = startZ + 0.45 + Math.random() * 1.4;
+
+    const outerBolt = this.findFreeSlot(false);
+    if (outerBolt) {
+      outerBolt.mat.color.set(Math.random() > 0.4 ? '#fde047' : '#34d399');
+      this.writeRibbonPath(outerBolt, startX, startY, startZ, endX, endY, endZ, 0.48, 0.12);
+      outerBolt.maxLife = 0.12;
+      outerBolt.life = outerBolt.maxLife;
+      outerBolt.mat.opacity = 0.95;
+      outerBolt.mesh.visible = true;
+    }
+
+    if (Math.random() < 0.6) {
+      const blackBolt = this.findFreeSlot(true);
+      if (blackBolt && blackBolt.isBlackCoreSlot) {
+        blackBolt.mat.color.set('#05050a');
+        this.writeRibbonPath(blackBolt, startX, startY, startZ + 0.02, endX, endY, endZ + 0.02, 0.42, 0.075);
+        blackBolt.maxLife = 0.10;
+        blackBolt.life = blackBolt.maxLife;
+        blackBolt.mat.opacity = 0.96;
         blackBolt.mesh.visible = true;
       }
     }

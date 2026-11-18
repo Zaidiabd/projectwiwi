@@ -25,6 +25,11 @@ export class HUD {
     this.stageBannerTitle = document.getElementById('stage-banner-title');
     this.bannerTimer = 0;
 
+    this.rivalAlertEl = document.getElementById('rival-alert');
+    this.rivalAlertNameEl = document.getElementById('rival-alert-name');
+    this.rivalAlertSubEl = document.getElementById('rival-alert-sub');
+    this.rivalAlertTimer = 0;
+
     this.tempSyncTimerEl = document.getElementById('temp-sync-timer');
     this.syncSecEl = document.getElementById('hud-sync-sec');
     this.audioSecEl = document.getElementById('hud-audio-sec');
@@ -69,6 +74,8 @@ export class HUD {
     if (!visible) {
       this.stageBannerEl.classList.add('hidden');
       this.bannerTimer = 0;
+      if (this.rivalAlertEl) this.rivalAlertEl.classList.add('hidden');
+      this.rivalAlertTimer = 0;
     }
   }
 
@@ -79,6 +86,15 @@ export class HUD {
     this.stageBannerEl.style.borderColor = accent;
     this.stageBannerEl.classList.remove('hidden');
     this.bannerTimer = duration;
+  }
+
+  showRivalAlert(name, subtitle, accent = '#ff2a4b', duration = 3.4) {
+    if (!this.rivalAlertEl) return;
+    this.rivalAlertEl.style.setProperty('--rival-accent', accent);
+    this.rivalAlertNameEl.textContent = name;
+    this.rivalAlertSubEl.textContent = subtitle;
+    this.rivalAlertEl.classList.remove('hidden');
+    this.rivalAlertTimer = duration;
   }
 
   update(state, timeCtrl, renderer, quality, audioSeconds = null) {
@@ -95,6 +111,13 @@ export class HUD {
       this.bannerTimer -= timeCtrl.realDt;
       if (this.bannerTimer <= 0) {
         this.stageBannerEl.classList.add('hidden');
+      }
+    }
+
+    if (this.rivalAlertTimer > 0) {
+      this.rivalAlertTimer -= timeCtrl.realDt;
+      if (this.rivalAlertTimer <= 0 && this.rivalAlertEl) {
+        this.rivalAlertEl.classList.add('hidden');
       }
     }
 
