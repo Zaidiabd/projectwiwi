@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { buildLilyCatAtlas } from './LilyCatAtlas.js';
 import { buildProceduralCatAtlas } from './ProceduralCatAtlas.js';
 import { CatAnimator } from './CatAnimator.js';
-import { getExpectedRivalDistance } from '../core/GameState.js';
+import { LANES, getExpectedRivalDistance } from '../core/GameState.js';
 
 const LILY_VERT = /* glsl */ `
   varying vec2 vUv;
@@ -192,13 +192,21 @@ export class LilyController {
   }
 
   reset() {
-    this.x = 5.8;
+    this.x = LANES[2];
     this.y = 0;
     this.z = -0.8;
     this.vy = 0;
+    this.laneIndex = 2;
     this.overdrivePhase = 0;
     this.hitSlowFactor = 1.0;
     this.hitZOffset = 0;
+    this.tear5Synced = false;
+    // Alternate competitive edge cleanly while keeping organic per-run variance (~50/50 balanced win rate)
+    LilyController.matchCounter = (LilyController.matchCounter || 0) + 1;
+    const slightBias = (LilyController.matchCounter % 2 === 0 ? 1 : -1) * (0.022 + Math.random() * 0.014);
+    this.rivalPaceFactor = 1.0 + slightBias;
+    this.boostPhaseOffset = Math.random() * Math.PI * 2;
+    this.decisionTimer = 0;
     this.group.visible = false;
     this.group.position.set(this.x, 0, this.z);
     this.spriteMesh.position.y = 0;
@@ -211,42 +219,98 @@ export class LilyController {
     this.syncUV();
   }
 
-  applyImpactSlowdown(isOverdrive = false) {
+  applyImpactSlowdown(isOverdrive = false, state = null) {
     // Before Overdrive: 38% speed loss (0.62x); after Dual Overdrive (179s+): only 20% hindered (0.80x)
     const retain = isOverdrive ? 0.80 : 0.62;
     this.hitSlowFactor = Math.min(this.hitSlowFactor, retain);
     this.hitZOffset = Math.min(1.4, this.hitZOffset + (isOverdrive ? 0.36 : 0.85));
+    if (state) {
+      state.rivalDistance = Math.max(0, state.rivalDistance - (isOverdrive ? 18 : 42));
+    }
   }
 
   /**
-   * Lily joins the chase at TEAR V (142s -> 216s), bounding alongside Wiwi
-   * and surging continuously faster during Dual Overdrive (179s+)!
+   * Rival joins the chase at TEAR V (142s -> 216s), actively weaving across the 3 lanes
+   * to dodge Black-Red Pillars and racing head-to-head against the player!
    */
-  updateChase(playerDt, cat, state, laserX) {
+  updateChase(playerDt, cat, state, laserX, pillars = []) {
     if (state.tearCount < 5 || state.phase !== 'playing') {
       this.group.visible = false;
       return;
     }
 
     this.group.visible = true;
-    const smooth = 1 - Math.exp(-5.0 * playerDt);
+    const smooth = 1 - Math.exp(-9.0 * playerDt);
+
+    // Sync head-to-head rivalry distance at TEAR V entry (142s) if the player has been actively running
+    if (!this.tear5Synced) {
+      this.tear5Synced = true;
+      const baseline142 = getExpectedRivalDistance(142.0);
+      if (state.distance >= baseline142 * 0.78) {
+        state.rivalDistance = state.distance + (Math.random() - 0.5) * 60;
+      } else {
+        state.rivalDistance = Math.max(state.rivalDistance, baseline142);
+      }
+    }
 
     // Recover rapidly back to full pace & accelerate continuously during 179s+ Overdrive
     const recoverRate = state.overdriveMode ? 2.6 : 1.4;
     this.hitSlowFactor = Math.min(1.0, this.hitSlowFactor + playerDt * recoverRate);
     this.hitZOffset = Math.max(0, this.hitZOffset - playerDt * (state.overdriveMode ? 2.2 : 1.1));
 
-    // Keep Lily cleanly offset to the side of Wiwi while tracking the laser dot
-    const sideOffset = cat.x >= 0 ? -1.85 : 1.85;
-    const desiredX = THREE.MathUtils.clamp(laserX * 0.65 + sideOffset, -4.6, 4.6);
+    // 1. Symmetrical Rival Velocity & Distance Simulation (identical physics tier to Player Cat in TEAR V & Overdrive)
+    const overdriveClimb = state.overdriveMode ? Math.max(0, state.runElapsed - 179.0) * 0.68 : 0;
+    const overdriveBonus = state.overdriveMode ? 14.0 + overdriveClimb : 0;
+    const rivalBaseMax = 73.0 + overdriveBonus;
+    const rivalBoostMax = rivalBaseMax + 33.0 + (state.overdriveMode ? 10.0 : 0);
+
+    // Rival manages boost energy & slipstream just like a skilled runner
+    const rivalIsBoosting = Math.sin(state.runElapsed * 1.65 + this.boostPhaseOffset) > -0.38;
+    const rivalTargetMax = rivalIsBoosting ? rivalBoostMax : rivalBaseMax;
+    const rivalSlipBonus = (0.68 + 0.30 * Math.cos(state.runElapsed * 1.1 + this.boostPhaseOffset)) * (rivalIsBoosting ? 8.5 : 3.0);
+    const rivalGrazePace = 42.5; // matches player active graze & temporal burst velocity contribution
+
+    // Keep head-to-head duel tight when player is actively sprinting
+    const draftPull =
+      state.speed > 45
+        ? THREE.MathUtils.clamp((state.distance - state.rivalDistance) * 0.05, -6.0, 6.0)
+        : 0;
+    state.rivalSpeed = Math.max(
+      28,
+      (rivalTargetMax + rivalSlipBonus + rivalGrazePace) * this.rivalPaceFactor * this.hitSlowFactor + draftPull
+    );
+    state.rivalDistance += state.rivalSpeed * playerDt;
+    state.rivalryDelta = state.distance - state.rivalDistance;
+
+    // 2. 3-Lane Rival Avoidance AI (dodges incoming pillars while preferring a lane distinct from the player)
+    let bestLane = this.laneIndex;
+    let bestScore = Infinity;
+    for (let l = 0; l < 3; l++) {
+      let score = l === cat.laneIndex ? 45 : 0;
+      score += Math.abs(LANES[l] - laserX) * 2.2;
+      for (let i = 0; i < pillars.length; i++) {
+        const p = pillars[i];
+        if (!p.active || p.lane !== l) continue;
+        const relZ = p.z - this.z;
+        if (relZ < 1.6 && relZ > -42) {
+          const dist = Math.max(0.2, -relZ);
+          score += (dist < 26 ? 2400 : 250) + (1 - dist / 42) * 1200;
+        }
+      }
+      if (score < bestScore) {
+        bestScore = score;
+        bestLane = l;
+      }
+    }
+    this.laneIndex = bestLane;
+
+    const desiredX = LANES[this.laneIndex];
     this.x += (desiredX - this.x) * smooth;
 
-    // Rivalry Z-lead: tracks threshold pace, plus slight overdrive forward push while keeping obstacle hindrance fair
-    const expectedDist = getExpectedRivalDistance(state.runElapsed);
-    const paceRatio = (state.distance - expectedDist) / 900; // + ahead, - behind
-    const overdrivePush = state.overdriveMode ? Math.min(0.45, Math.max(0, state.runElapsed - 179.0) * 0.012) : 0;
-    const desiredZ = THREE.MathUtils.clamp(-0.6 - paceRatio * 1.1 - overdrivePush + this.hitZOffset, -2.15, 1.15);
-    this.z += (desiredZ - this.z) * (1 - Math.exp(-3.8 * playerDt));
+    // 3. Rivalry Z-lead: directly reflects live head-to-head lead/deficit (`state.rivalryDelta`)
+    const paceRatio = state.rivalryDelta / 220; // + player ahead (rival behind at +z), - rival ahead (rival in front at -z)
+    const desiredZ = THREE.MathUtils.clamp(-0.35 + paceRatio * 1.45 + this.hitZOffset, -2.45, 1.35);
+    this.z += (desiredZ - this.z) * (1 - Math.exp(-4.2 * playerDt));
 
     const overdriveSpeedRamp = state.overdriveMode ? Math.max(0, state.runElapsed - 179.0) * 0.014 : 0;
     this.animator.play('run_rear');

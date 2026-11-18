@@ -1235,7 +1235,7 @@ export class ObstacleSystem {
         p.hitCooldown = 1.0;
         p.active = false;
         if (!phaseProtected) {
-          lily.applyImpactSlowdown(state.overdriveMode);
+          lily.applyImpactSlowdown(state.overdriveMode, state);
           if (onLilyHit) onLilyHit(lily.x, lily.z);
         }
       }

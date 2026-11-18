@@ -572,7 +572,13 @@ export class Game {
           1 - Math.pow(this.state.progress, 1.15)
         );
 
-        this.lily.updateChase(this.time.playerDt, this.cat, this.state, this.environment.laserX);
+        this.lily.updateChase(
+          this.time.playerDt,
+          this.cat,
+          this.state,
+          this.environment.laserX,
+          this.obstacles.pillars
+        );
         this.environment.update(this.time.worldDt, realDt, this.state, beatEnergy, this.cat, this.lily);
         this.corridor.update(this.time.worldDt, this.state.speed, this.state.actIndex, this.state.runElapsed, beatEnergy);
         this.voidWorld.update(this.time.worldDt, this.state);

@@ -118,13 +118,15 @@ export class Menus {
     const rivalTitle = rivalLabel === 'LILY' ? 'Lily' : 'Wiwi';
 
     if (state.wiwiWon) {
+      const lead = Math.max(1, Math.round(state.distance - Math.max(TARGET_CATCH_DISTANCE, state.rivalDistance)));
       this.endHeadlineEl.innerHTML = 'UNIVERSE DESTROYED.<br />LASER ACQUIRED.';
-      this.endOutcomeNoteEl.textContent = `${playerTitle} dove past ${rivalTitle} and claimed the dot! (${TARGET_CATCH_DISTANCE.toLocaleString()} m threshold cleared)`;
+      this.endOutcomeNoteEl.textContent = `${playerTitle} out-sprinted ${rivalTitle} by +${lead.toLocaleString()} m and claimed the dot!`;
       this.endOutcomeNoteEl.style.color = '#22e6ff';
     } else {
-      const deficit = Math.max(1, Math.round(TARGET_CATCH_DISTANCE - state.distance));
+      const targetGoal = Math.max(TARGET_CATCH_DISTANCE, state.rivalDistance);
+      const deficit = Math.max(1, Math.round(targetGoal - state.distance));
       this.endHeadlineEl.innerHTML = `UNIVERSE DESTROYED.<br />${rivalLabel} STOLE THE LASER.`;
-      this.endOutcomeNoteEl.textContent = `${rivalTitle} casually stepped on it first! ${playerTitle} needed +${deficit.toLocaleString()} m to reach ${TARGET_CATCH_DISTANCE.toLocaleString()} m.`;
+      this.endOutcomeNoteEl.textContent = `${rivalTitle} beat ${playerTitle} to the dot by +${deficit.toLocaleString()} m!`;
       this.endOutcomeNoteEl.style.color = '#ff6b81';
     }
 

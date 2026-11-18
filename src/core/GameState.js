@@ -130,7 +130,9 @@ export class GameState {
     this.grazeCount = 0;
     this.grazeStreak = 0;
     this.grazeTimer = 0;
-    this.rivalryDelta = 0; // +meters ahead of 23,000m pace, -meters behind
+    this.rivalDistance = 0;
+    this.rivalSpeed = 0;
+    this.rivalryDelta = 0; // +meters ahead of Rival, -meters behind
 
     this.slipstreamAlignment = 0;
     this.realityIntegrity = 1.0;
@@ -206,8 +208,10 @@ export class GameState {
       this.burstStage = 2;
     }
     this.overdriveMode = t >= TIMELINE.overdrivePowerup;
-    const expectedDist = getExpectedRivalDistance(t);
-    this.rivalryDelta = this.distance - expectedDist;
+    if (t < TIMELINE.tear5) {
+      this.rivalDistance = getExpectedRivalDistance(t);
+    }
+    this.rivalryDelta = this.distance - this.rivalDistance;
 
     return {
       stageChanged: nextStage !== prevStage,
@@ -219,7 +223,8 @@ export class GameState {
   }
 
   completeRun() {
-    this.wiwiWon = this.distance >= TARGET_CATCH_DISTANCE;
+    const targetGoal = Math.max(TARGET_CATCH_DISTANCE, this.rivalDistance);
+    this.wiwiWon = this.distance >= targetGoal;
     if (this.bestDistance === null || this.distance > this.bestDistance) {
       this.bestDistance = this.distance;
       this.isNewBest = true;
