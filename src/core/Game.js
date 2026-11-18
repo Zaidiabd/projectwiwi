@@ -11,7 +11,6 @@ import { GameState } from './GameState.js';
 
 import { CatController } from '../player/CatController.js';
 import { LilyController } from '../player/LilyController.js';
-import { ProjectionRival } from '../player/ProjectionRival.js';
 import { FollowCamera } from '../player/FollowCamera.js';
 import { AutopilotAI } from '../player/AutopilotAI.js';
 
@@ -20,6 +19,7 @@ import { Corridor } from '../world/Corridor.js';
 import { VoidWorld } from '../world/VoidWorld.js';
 import { RiftWorld } from '../world/RiftWorld.js';
 import { ObstacleSystem } from '../world/ObstacleSystem.js';
+import { PowerupSystem } from '../world/PowerupSystem.js';
 
 import { AfterimageSystem } from '../effects/AfterimageSystem.js';
 import { LightningSystem } from '../effects/LightningSystem.js';
@@ -58,9 +58,9 @@ export class Game {
     this.voidWorld = new VoidWorld(this.scene);
     this.riftWorld = new RiftWorld(this.scene);
     this.obstacles = new ObstacleSystem(this.scene);
+    this.powerups = new PowerupSystem(this.scene);
     this.cat = new CatController(this.scene);
     this.lily = new LilyController(this.scene);
-    this.projectionRival = new ProjectionRival(this.scene);
     this.autopilot = new AutopilotAI();
 
     // VFX
@@ -176,6 +176,7 @@ export class Game {
     this.afterimages.setQualityCount(cfg.afterimagePool);
     this.lightning.setQualityCount(cfg.lightningBolts);
     this.obstacles.setQualityCount(cfg.obstacles);
+    this.powerups.setQualityCount(cfg.obstacles);
     this.speedEffects.setQualityCount(cfg.id);
   }
 
@@ -320,7 +321,6 @@ export class Game {
     this.state.reset();
     this.cat.reset();
     this.lily.reset();
-    this.projectionRival.reset();
     this.autopilot.reset();
     this.cameraCtrl.reset();
     this.environment.reset();
@@ -328,6 +328,7 @@ export class Game {
     this.voidWorld.reset();
     this.riftWorld.reset();
     this.obstacles.reset();
+    this.powerups.reset();
     this.afterimages.reset();
     this.lightning.reset();
     this.rift.reset();
@@ -443,6 +444,14 @@ export class Game {
         cinematic: 1.0
       });
 
+      if (this.state.shieldTimer > 0) {
+        this.state.shieldTimer = Math.max(0, this.state.shieldTimer - realDt);
+        this.state.shieldActive = this.state.shieldTimer > 0;
+      }
+      if (this.state.surgeTimer > 0) {
+        this.state.surgeTimer = Math.max(0, this.state.surgeTimer - realDt);
+      }
+
       const aiInput = this.autopilot.enabled
         ? this.autopilot.computeInput(
             this.cat,
@@ -450,7 +459,8 @@ export class Game {
             this.environment.laserX,
             this.obstacles.getObstaclesRef(),
             this.time.worldScale,
-            () => this.tryTriggerBurst()
+            () => this.tryTriggerBurst(),
+            this.powerups.getPowerupsRef()
           )
         : null;
 
@@ -484,18 +494,18 @@ export class Game {
           this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.55, 0.1, '#ffbe3b', 11.5);
           this.audio.playTemporalBurst();
           this.hud.showBanner('BURST II // 136s', 'STAGE II TEMPORAL BURST ENGAGED', '#ffbe3b', 3.2);
-        } else if (events.enteredSaiyan) {
-          // 179s: Halfway through TEAR V -> Wiwi & Lily Saiyan Powerup!
+        } else if (events.enteredOverdrive) {
+          // 179s: Halfway through TEAR V -> Dual Overdrive on BOTH Wiwi & Lily!
           this.flashValue = 0.72;
           this.rippleValue = 1.0;
           this.overclockSlowmoTimer = 0.9;
-          this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.55, 0.1, '#fef08a', 14.0, 0.7);
-          this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0.1, '#fef08a', 18);
-          this.speedEffects.spawnShockwave(this.lily.x, 0.35, this.lily.z, '#fde047', 10.5, 0.65);
-          this.speedEffects.spawnImpactBurst(this.lily.x, 0.85, this.lily.z, '#34d399', 16);
+          this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.55, 0.1, '#38f3ff', 14.0, 0.7);
+          this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0.1, '#ff2a4b', 18);
+          this.speedEffects.spawnShockwave(this.lily.x, 0.35, this.lily.z, '#34d399', 11.5, 0.65);
+          this.speedEffects.spawnImpactBurst(this.lily.x, 0.85, this.lily.z, '#fb7185', 18);
           this.audio.playTemporalBurst();
           this.audio.playPhaseShimmer();
-          this.hud.showBanner('POWERUP // 179s', 'SAIYAN OVERDRIVE • RED/BLACK/BLUE VOLTAGE', '#fef08a', 3.4);
+          this.hud.showBanner('OVERDRIVE // 179s', 'DUAL OVERDRIVE • WIWI & LILY UNLEASHED!', '#38f3ff', 3.4);
         } else if (events.enteredEnding) {
           // 216s: Final leap into the Laser Reveal
           this.beginEnding();
@@ -515,7 +525,7 @@ export class Game {
         } else if (this.state.tearCount === 2) {
           this.hud.showBanner('TEAR II // 50s', 'DIMENSIONAL SURGE INTENSIFYING', '#c084fc', 2.6);
         } else if (this.state.tearCount === 3) {
-          this.hud.showBanner('TEAR III // 62s', 'WEIRD SPACE TEAR ANOMALY DETECTED', '#2dd4bf', 3.0);
+          this.hud.showBanner('TEAR III // 62s', 'RIFT PYLON GATES ACTIVE • STAY IN CLEAR LANES', '#2dd4bf', 3.0);
         } else if (this.state.tearCount === 4) {
           this.hud.showBanner('TEAR IV // 75s', 'HYPERSTORM RUPTURE • MAXIMUM ESCALATION', '#e879f9', 3.0);
         } else if (this.state.tearCount === 5) {
@@ -534,20 +544,6 @@ export class Game {
         );
 
         this.lily.updateChase(this.time.playerDt, this.cat, this.state, this.environment.laserX);
-        const projEvent = this.projectionRival.update(
-          this.time.worldDt,
-          this.state,
-          this.cat,
-          this.speedEffects,
-          this.audio
-        );
-        if (projEvent === 'entered') {
-          this.audio.playRivalAlert();
-          this.hud.showRivalAlert('PROJECTION SPEEDSTER', '24-FPS TECHNIQUE ENGAGED', '#38bdf8', 3.0);
-        } else if (projEvent === 'defeated') {
-          this.flashValue = Math.max(this.flashValue, 0.24);
-          this.hud.showBanner('SPEED BLITZ // 25.6s', '24-FPS PROJECTION SHATTERED • LEFT IN THE DUST!', '#fde047', 2.4);
-        }
         this.environment.update(this.time.worldDt, realDt, this.state, beatEnergy);
         this.corridor.update(this.time.worldDt, this.state.speed, this.state.actIndex, this.state.runElapsed, beatEnergy);
         this.voidWorld.update(this.time.worldDt, this.state);
@@ -565,8 +561,40 @@ export class Game {
             this.state.boostEnergy = Math.min(1, this.state.boostEnergy + 0.15);
             this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0, '#22e6ff', 10);
             this.audio.playPhaseShimmer();
+          },
+          () => {
+            // Aegis Shield absorbed an obstacle hit!
+            this.state.shieldActive = false;
+            this.state.shieldTimer = 0;
+            this.flashValue = 0.14;
+            this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.4, 0.1, '#34d399', 8.5, 0.45);
+            this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0, '#34d399', 14);
+            this.audio.playPhaseShimmer();
+            this.hud.showBanner('AEGIS SHIELD', 'HAZARD ABSORBED • ZERO SLOWDOWN!', '#34d399', 1.8);
           }
         );
+        this.powerups.update(this.time.worldDt, this.cat, this.state, (spec, px, pz) => {
+          this.state.powerupsCollected++;
+          if (spec.id === 'surge') {
+            this.state.boostEnergy = Math.min(1, this.state.boostEnergy + 0.35);
+            this.state.surgeTimer = 3.5;
+            this.cat.speed += 12;
+          } else if (spec.id === 'shield') {
+            this.state.shieldActive = true;
+            this.state.shieldTimer = 12.0;
+          } else if (spec.id === 'charge') {
+            if (this.state.burstUnlocked) {
+              this.state.burstCharge = Math.min(1, this.state.burstCharge + 0.45);
+            } else {
+              this.state.boostEnergy = Math.min(1, this.state.boostEnergy + 0.5);
+            }
+          }
+          this.flashValue = Math.max(this.flashValue, 0.14);
+          this.speedEffects.spawnShockwave(px, 0.35, pz, spec.color, 7.5, 0.42);
+          this.speedEffects.spawnImpactBurst(px, 0.7, pz, spec.color, 12);
+          this.audio.playPowerupPickup();
+          this.hud.showBanner(spec.label, spec.sub, spec.color, 2.0);
+        });
         this.afterimages.update(this.time.worldDt, this.cat, this.state);
         this.lightning.update(this.time.worldDt, this.cat, this.state, beatEnergy, this.lily);
         this.rift.update(this.time.worldDt, realDt, this.state, beatEnergy);
@@ -591,17 +619,17 @@ export class Game {
     if (this.compositePass) {
       const isPlaying = this.state.phase === 'playing';
       const spd = isPlaying ? this.state.normalizedSpeed : 0;
-      const anyBurst = this.state.burstActive || this.state.stage2BurstActive || this.state.saiyanMode;
+      const anyBurst = this.state.burstActive || this.state.stage2BurstActive || this.state.overdriveMode;
       this.compositePass.uniforms.uTime.value = this.time.realElapsed;
       this.compositePass.uniforms.uSpeedBlur.value =
         spd > 0.22 ? (spd - 0.22) * 0.98 + (anyBurst ? 0.42 : 0) : 0;
       this.compositePass.uniforms.uSpeedLines.value =
         isPlaying && (spd > 0.34 || anyBurst)
-          ? Math.min(1.25, Math.max(0, (spd - 0.30) * 1.4) + (this.state.saiyanMode ? 0.45 : anyBurst ? 0.25 : 0))
+          ? Math.min(1.25, Math.max(0, (spd - 0.30) * 1.4) + (this.state.overdriveMode ? 0.45 : anyBurst ? 0.25 : 0))
           : 0;
       this.compositePass.uniforms.uSpeedLineColor.value.set(
-        this.state.saiyanMode
-          ? '#fef08a'
+        this.state.overdriveMode
+          ? '#38f3ff'
           : this.state.stage2BurstActive
             ? '#ffbe3b'
             : this.state.tearCount >= 5
@@ -611,7 +639,7 @@ export class Game {
       this.compositePass.uniforms.uRipple.value = this.rippleValue;
       this.compositePass.uniforms.uChromatic.value =
         isPlaying && (this.state.actIndex >= 2 || anyBurst)
-          ? 0.002 + spd * 0.0068 + this.state.tearCount * 0.0008 + (this.state.saiyanMode ? 0.0025 : 0) + beatEnergy * 0.002
+          ? 0.002 + spd * 0.0068 + this.state.tearCount * 0.0008 + (this.state.overdriveMode ? 0.0025 : 0) + beatEnergy * 0.002
           : 0;
       this.compositePass.uniforms.uVignette.value =
         this.state.phase === 'ending' || this.state.phase === 'ended' ? 0.14 : 0.26 + spd * 0.14;

@@ -133,20 +133,18 @@ soundtrack timeline (`runElapsed`), while player steering, boost,
 slipstream tracking, and obstacle avoidance drive velocity, distance, and
 high-speed intensity:
 
--   `0s--18s`: Quiet opening (`Act 1`) -> Acceleration corridor (`Act 2`);
-    `Space` Temporal Burst stays locked until `26s`.
--   `18s--25.65s`: **24-FPS Projection Speedster** rival homage snaps
-    ahead along stepped 24-FPS translucent glass projection frames until
-    Wiwi surges past right before the `26s` Overclock, shattering every
-    projection pane and leaving him tumbling in the dust.
+-   `0s--26s`: Quiet opening (`Act 1`) -> Acceleration corridor (`Act 2`);
+    `Space` Temporal Burst stays locked until `26s`, while collectible
+    powerup orbs (`Velocity Surge`, `Aegis Shield`, `Temporal Cell`) begin
+    spawning along clear track lanes.
 -   `26s`: Overclock slow-motion animation + `Space` Temporal Burst
     unlocks (`Stage 1`).
 -   `38s`: First space-time fabric tear; electric charges emanate from
     Wiwi's body and intensify at every subsequent tear.
 -   `50s`: Second space-time tear (`Stage 5`), faster speed ceiling.
--   `62s`: Third space-time tear (`Space Tear Anomaly`); environment
-    shifts to a surreal bioluminescent anomaly palette and new swaying
-    anomaly obstacles appear.
+-   `62s`: Third space-time tear (`Dimensional Rift Pylon Gates`);
+    environment shifts to a crisp teal-magenta overdrive palette and
+    fair, lane-locked rift pylons with floor telegraph strips appear.
 -   `75s`: Fourth space-time tear; hyperstorm escalation.
 -   `136s--142s`: **Stage 2 Temporal Burst** (distinct golden-crimson
     time-dilation surge) leading into the fifth space-time tear at `142s`.
@@ -154,11 +152,12 @@ high-speed intensity:
     tactical alert fires as bigger long-haired black-and-white cat
     **Lily** joins the chase alongside Wiwi while Wiwi displays an
     annoyed pulsing anger symbol (`💢`) overhead.
--   `179s`: **Saiyan Powerup** halfway through TEAR V — Both Wiwi and
-    Lily activate Saiyan Overdrive (Wiwi's fur turns light yellow with
-    golden aura, thick red/black/blue ribbon lightning, and supersonic
-    afterimages; Lily ignites with luminous pale-gold highlights, a
-    pulsing golden-emerald aura, and golden-emerald lightning/sparks).
+-   `179s`: **Dual Overdrive Powerup** halfway through TEAR V — Both
+    Wiwi and Lily ignite into synchronized Overdrive while keeping their
+    natural coats intact: pulsing multi-flame plasma auras, orbiting
+    energy halo rings, glowing silhouette rims, thick red/black/blue
+    lightning on Wiwi paired with emerald/crimson/black lightning and
+    sparks on Lily, plus supersonic smeared afterimages.
 -   `216s`: Final leap into Act 5 (`The Laser Reveal`): clearing
     `>= 23,000 m` lets Wiwi beat Lily to the laser (`UNIVERSE DESTROYED.
     LASER ACQUIRED.`); falling short lets Lily steal it instead.
@@ -848,7 +847,8 @@ GitHub Pages-ready implementation deployed at
     (`AutopilotAI.js`).
 -   **3D worlds, effects & post-processing:** `InstancedMesh` corridor,
     speed void, floating rift shards + late-run cosmic warp rings,
-    standard + swaying anomaly obstacles, glowing slipstream ribbon, Act 5
+    standard shards + lane-locked Dimensional Rift Pylon gates +
+    collectible powerup orbs, glowing slipstream ribbon, Act 5
     peaceful living room props, pooled afterimages, pooled 3D lightning +
     cat body charges, custom GLSL volumetric rift (`RiftEffect.js`),
     stage announcement banners, and single-pass `CompositeShader` +

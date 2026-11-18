@@ -129,7 +129,7 @@ export class RiftWorld {
     } else if (state.tearCount >= 5) {
       this.shardMat.emissive.set('#e11d48');
       this.crackMat.color.set('#ff2a4b');
-    } else if (state.anomalyMode) {
+    } else if (state.riftGateMode) {
       this.shardMat.emissive.set('#0d9488');
       this.crackMat.color.set('#2dd4bf');
     } else if (state.tearCount >= 1) {

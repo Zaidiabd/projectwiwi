@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 
 const MAX_OBSTACLES = 20;
-const MAX_ANOMALIES = 12;
+const MAX_GATES = 10;
+const GATE_LANES = [-3.9, -2.35, -0.8, 0.8, 2.35, 3.9];
 
 export class ObstacleSystem {
   constructor(scene) {
     this.scene = scene;
     this.activeCount = 16;
-    this.anomalyLimit = 10;
+    this.gateLimit = 8;
 
-    // 1. Standard obsidian reality shards
+    // 1. Standard obsidian reality shards (lane-locked floor hazards)
     const geom = new THREE.ConeGeometry(0.46, 1.45, 5);
     geom.translate(0, 0.72, 0);
     this.mat = new THREE.MeshStandardMaterial({
@@ -26,21 +27,38 @@ export class ObstacleSystem {
     this.mesh.frustumCulled = false;
     this.scene.add(this.mesh);
 
-    // 2. Weird Space Tear Anomaly obstacles (unlocked at 62s)
-    const anomGeom = new THREE.TorusKnotGeometry(0.45, 0.14, 36, 8);
-    this.anomMat = new THREE.MeshStandardMaterial({
-      color: '#06181c',
+    // 2. Dimensional Rift Pylon Gates (fair, lane-locked & telegraphed obstacles starting at 62s)
+    const pylonGeom = new THREE.CylinderGeometry(0.28, 0.42, 2.35, 6);
+    pylonGeom.translate(0, 1.18, 0);
+    this.pylonMat = new THREE.MeshStandardMaterial({
+      color: '#091524',
       emissive: '#2dd4bf',
-      emissiveIntensity: 1.25,
-      roughness: 0.15,
-      metalness: 0.9,
+      emissiveIntensity: 1.2,
+      roughness: 0.18,
+      metalness: 0.85,
       transparent: true,
       opacity: 0.94
     });
 
-    this.anomMesh = new THREE.InstancedMesh(anomGeom, this.anomMat, MAX_ANOMALIES);
-    this.anomMesh.frustumCulled = false;
-    this.scene.add(this.anomMesh);
+    this.pylonMesh = new THREE.InstancedMesh(pylonGeom, this.pylonMat, MAX_GATES);
+    this.pylonMesh.frustumCulled = false;
+    this.scene.add(this.pylonMesh);
+
+    // Ground telegraph lane warning strip ahead of each pylon so dodge path is unmistakable
+    const stripGeom = new THREE.PlaneGeometry(0.95, 16.0);
+    stripGeom.rotateX(-Math.PI / 2);
+    stripGeom.translate(0, 0.025, 8.0);
+    this.stripMat = new THREE.MeshBasicMaterial({
+      color: '#2dd4bf',
+      transparent: true,
+      opacity: 0.34,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    this.stripMesh = new THREE.InstancedMesh(stripGeom, this.stripMat, MAX_GATES);
+    this.stripMesh.frustumCulled = false;
+    this.scene.add(this.stripMesh);
 
     this.items = [];
     for (let i = 0; i < MAX_OBSTACLES; i++) {
@@ -53,15 +71,12 @@ export class ObstacleSystem {
       });
     }
 
-    this.anomalies = [];
-    for (let i = 0; i < MAX_ANOMALIES; i++) {
-      this.anomalies.push({
-        baseX: 0,
-        x: 0,
-        y: 0.85,
-        z: -55 - i * 24,
+    this.gates = [];
+    for (let i = 0; i < MAX_GATES; i++) {
+      this.gates.push({
+        x: GATE_LANES[i % GATE_LANES.length],
+        z: -65 - i * 26,
         phase: Math.random() * Math.PI * 2,
-        swayAmp: 1.4 + Math.random() * 1.8,
         active: false,
         hitCooldown: 0
       });
@@ -73,33 +88,35 @@ export class ObstacleSystem {
 
   setQualityCount(count) {
     this.activeCount = Math.min(MAX_OBSTACLES, count);
-    this.anomalyLimit = Math.min(MAX_ANOMALIES, Math.max(4, Math.floor(count * 0.6)));
+    this.gateLimit = Math.min(MAX_GATES, Math.max(4, Math.floor(count * 0.5)));
     this.mesh.count = this.activeCount;
-    this.anomMesh.count = this.anomalyLimit;
+    this.pylonMesh.count = this.gateLimit;
+    this.stripMesh.count = this.gateLimit;
   }
 
   reset() {
     this.mesh.visible = false;
-    this.anomMesh.visible = false;
+    this.pylonMesh.visible = false;
+    this.stripMesh.visible = false;
     for (let i = 0; i < MAX_OBSTACLES; i++) {
       this.items[i].z = -45 - i * 18;
       this.items[i].x = (Math.random() - 0.5) * 9.0;
       this.items[i].active = false;
       this.items[i].hitCooldown = 0;
     }
-    for (let i = 0; i < MAX_ANOMALIES; i++) {
-      this.anomalies[i].z = -60 - i * 24;
-      this.anomalies[i].baseX = (Math.random() - 0.5) * 6.5;
-      this.anomalies[i].x = this.anomalies[i].baseX;
-      this.anomalies[i].active = false;
-      this.anomalies[i].hitCooldown = 0;
+    for (let i = 0; i < MAX_GATES; i++) {
+      this.gates[i].z = -70 - i * 28;
+      this.gates[i].x = GATE_LANES[(i * 2) % GATE_LANES.length];
+      this.gates[i].active = false;
+      this.gates[i].hitCooldown = 0;
     }
   }
 
-  update(worldDt, cat, state, onHit, onPhase) {
+  update(worldDt, cat, state, onHit, onPhase, onShieldAbsorb) {
     if (state.actIndex < 1 || state.actIndex >= 4 || state.runElapsed > 212) {
       this.mesh.visible = false;
-      this.anomMesh.visible = false;
+      this.pylonMesh.visible = false;
+      this.stripMesh.visible = false;
       return;
     }
 
@@ -111,7 +128,7 @@ export class ObstacleSystem {
       this.mat.emissive.set(state.stage2BurstActive ? '#ffbe3b' : '#22e6ff');
       this.mat.opacity = 0.36;
     } else {
-      this.mat.emissive.set(state.anomalyMode ? '#d946ef' : '#ff2a4b');
+      this.mat.emissive.set(state.riftGateMode ? '#d946ef' : '#ff2a4b');
       this.mat.opacity = 0.92;
     }
 
@@ -134,7 +151,7 @@ export class ObstacleSystem {
 
       if (it.z > 8) {
         it.z = -125 - Math.random() * 45;
-        it.x = (Math.random() - 0.5) * 9.2;
+        it.x = (Math.random() - 0.5) * 9.0;
         it.active = true;
         it.hitCooldown = 0;
       }
@@ -145,6 +162,8 @@ export class ObstacleSystem {
           it.active = false;
           if (phaseProtected) {
             if (onPhase) onPhase();
+          } else if (state.shieldActive) {
+            if (onShieldAbsorb) onShieldAbsorb();
           } else {
             cat.applyImpactSlowdown();
             if (onHit) onHit();
@@ -160,59 +179,71 @@ export class ObstacleSystem {
     }
     this.mesh.instanceMatrix.needsUpdate = true;
 
-    // 2. Weird Space Tear Anomaly Obstacles (active from 62s onward!)
-    if (!state.anomalyMode) {
-      this.anomMesh.visible = false;
+    // 2. Dimensional Rift Pylon Gates (active from 62s onward — stationary lane positions + clear telegraphs!)
+    if (!state.riftGateMode) {
+      this.pylonMesh.visible = false;
+      this.stripMesh.visible = false;
       return;
     }
 
-    this.anomMesh.visible = true;
+    this.pylonMesh.visible = true;
+    this.stripMesh.visible = true;
     if (phaseProtected) {
-      this.anomMat.emissive.set('#ffbe3b');
-      this.anomMat.opacity = 0.36;
+      this.pylonMat.emissive.set('#ffbe3b');
+      this.pylonMat.opacity = 0.36;
+      this.stripMat.color.set('#ffbe3b');
+      this.stripMat.opacity = 0.14;
     } else if (state.tearCount >= 5) {
-      this.anomMat.emissive.set('#ff2a4b');
-      this.anomMat.opacity = 0.96;
+      this.pylonMat.emissive.set('#ff2a4b');
+      this.pylonMat.opacity = 0.96;
+      this.stripMat.color.set('#ff2a4b');
+      this.stripMat.opacity = 0.36;
     } else if (state.tearCount >= 4) {
-      this.anomMat.emissive.set('#e879f9');
-      this.anomMat.opacity = 0.95;
+      this.pylonMat.emissive.set('#e879f9');
+      this.pylonMat.opacity = 0.95;
+      this.stripMat.color.set('#e879f9');
+      this.stripMat.opacity = 0.34;
     } else {
-      this.anomMat.emissive.set('#2dd4bf');
-      this.anomMat.opacity = 0.94;
+      this.pylonMat.emissive.set('#2dd4bf');
+      this.pylonMat.opacity = 0.94;
+      this.stripMat.color.set('#2dd4bf');
+      this.stripMat.opacity = 0.32;
     }
 
-    const anomDensity = state.tearCount >= 4 ? 1.0 : 0.65;
-    const anomCount = Math.floor(this.anomalyLimit * anomDensity);
+    const gateDensity = state.tearCount >= 4 ? 1.0 : 0.7;
+    const gateCount = Math.floor(this.gateLimit * gateDensity);
 
-    for (let i = 0; i < this.anomalyLimit; i++) {
-      const a = this.anomalies[i];
-      if (i >= anomCount) {
+    for (let i = 0; i < this.gateLimit; i++) {
+      const g = this.gates[i];
+      if (i >= gateCount) {
         this.dummy.position.set(0, -100, 0);
         this.dummy.scale.setScalar(0.01);
         this.dummy.updateMatrix();
-        this.anomMesh.setMatrixAt(i, this.dummy.matrix);
+        this.pylonMesh.setMatrixAt(i, this.dummy.matrix);
+        this.stripMesh.setMatrixAt(i, this.dummy.matrix);
         continue;
       }
 
-      a.z += state.speed * (1.06 + state.tearCount * 0.03) * worldDt;
-      a.phase += worldDt * (2.6 + state.tearCount * 0.35);
-      a.x = THREE.MathUtils.clamp(a.baseX + Math.sin(a.phase) * a.swayAmp, -4.8, 4.8);
-      a.y = 0.72 + Math.sin(a.phase * 1.7) * 0.28;
-      if (a.hitCooldown > 0) a.hitCooldown -= worldDt;
+      // Moves cleanly straight along track Z at world speed with zero horizontal swerving
+      g.z += state.speed * worldDt;
+      g.phase += worldDt * 3.0;
+      if (g.hitCooldown > 0) g.hitCooldown -= worldDt;
 
-      if (a.z > 10) {
-        a.z = -140 - Math.random() * 45;
-        a.baseX = (Math.random() - 0.5) * 6.8;
-        a.active = true;
-        a.hitCooldown = 0;
+      if (g.z > 10) {
+        g.z = -140 - Math.random() * 45;
+        g.x = GATE_LANES[Math.floor(Math.random() * GATE_LANES.length)];
+        g.active = true;
+        g.hitCooldown = 0;
       }
 
-      if (a.active && a.hitCooldown <= 0 && Math.abs(a.z) < 0.95 && Math.abs(a.y - (cat.y + 0.5)) < 0.85) {
-        if (Math.abs(a.x - cat.x) < 0.86) {
-          a.hitCooldown = 1.0;
-          a.active = false;
+      if (g.active && g.hitCooldown <= 0 && Math.abs(g.z) < 0.85 && cat.y < 1.9) {
+        if (Math.abs(g.x - cat.x) < 0.76) {
+          g.hitCooldown = 1.0;
+          g.active = false;
           if (phaseProtected) {
             if (onPhase) onPhase();
+          } else if (state.shieldActive) {
+            if (onShieldAbsorb) onShieldAbsorb();
           } else {
             cat.applyImpactSlowdown();
             if (onHit) onHit();
@@ -220,14 +251,21 @@ export class ObstacleSystem {
         }
       }
 
-      const pulseScale = a.active ? 0.95 + Math.sin(a.phase * 2) * 0.16 : 0.01;
-      this.dummy.position.set(a.x, a.active ? a.y : -10, a.z);
-      this.dummy.rotation.set(a.phase * 0.9, a.phase * 1.3, a.phase * 0.5);
+      const pulseScale = g.active ? 1.0 + Math.sin(g.phase * 2) * 0.08 : 0.01;
+      this.dummy.position.set(g.x, g.active ? 0 : -10, g.z);
+      this.dummy.rotation.set(0, g.phase * 0.65, 0);
       this.dummy.scale.setScalar(pulseScale);
       this.dummy.updateMatrix();
-      this.anomMesh.setMatrixAt(i, this.dummy.matrix);
+      this.pylonMesh.setMatrixAt(i, this.dummy.matrix);
+
+      this.dummy.position.set(g.x, g.active ? 0 : -10, g.z);
+      this.dummy.rotation.set(0, 0, 0);
+      this.dummy.scale.setScalar(g.active ? 1.0 : 0.01);
+      this.dummy.updateMatrix();
+      this.stripMesh.setMatrixAt(i, this.dummy.matrix);
     }
-    this.anomMesh.instanceMatrix.needsUpdate = true;
+    this.pylonMesh.instanceMatrix.needsUpdate = true;
+    this.stripMesh.instanceMatrix.needsUpdate = true;
   }
 
   /**
@@ -236,9 +274,9 @@ export class ObstacleSystem {
   getObstaclesRef() {
     return {
       shardsActive: this.mesh.visible,
-      anomaliesActive: this.anomMesh.visible,
+      gatesActive: this.pylonMesh.visible,
       shards: this.items,
-      anomalies: this.anomalies
+      gates: this.gates
     };
   }
 }

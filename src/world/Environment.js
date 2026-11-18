@@ -419,12 +419,12 @@ export class Environment {
       targetLine = '#e879f9';
       targetGrid = 0.56 + beatEnergy * 0.22;
       targetFog = 0.011;
-    } else if (state.anomalyMode) {
-      // 62s-75s: Weird Space Tear Anomaly (eerie bioluminescent teal + magenta shift)
+    } else if (state.riftGateMode) {
+      // 62s-75s: Dimensional Rift Pylon Gates (crisp teal + neon magenta lanes)
       targetBg = '#04191e';
-      targetLine = Math.sin(this.laserTime * 1.8) > 0 ? '#2dd4bf' : '#f472b6';
+      targetLine = '#2dd4bf';
       targetGrid = 0.64 + beatEnergy * 0.24;
-      targetFog = 0.016;
+      targetFog = 0.015;
     } else if (state.tearCount >= 1) {
       // 38s-62s: Tear 1 & Tear 2 dimensional fracture
       targetBg = '#080416';
@@ -463,7 +463,7 @@ export class Environment {
     this.skyMat.uniforms.uSkyHorizon.value.copy(this.scene.background);
     this.skyMat.uniforms.uNebulaColor.value.lerp(new THREE.Color(targetLine), smooth);
     this.skyMat.uniforms.uNebulaStrength.value =
-      0.18 + state.tearCount * 0.1 + (state.saiyanMode ? 0.25 : 0) + beatEnergy * 0.15;
+      0.18 + state.tearCount * 0.1 + (state.overdriveMode ? 0.25 : 0) + beatEnergy * 0.15;
   }
 
   updateEnding(realDt, step) {

@@ -1,7 +1,7 @@
 /**
  * Predictive AI Playthrough Controller for Project WIWI.
- * Forecasts static shard and swaying anomaly trajectories ahead of the cat,
- * chooses the safest reachable lane closest to the laser slipstream, and
+ * Forecasts static obsidian shard and lane-locked Dimensional Rift Pylon hazards ahead of the cat,
+ * chooses the safest reachable lane closest to the laser slipstream & safe powerups, and
  * optimizes Boost + Temporal Burst usage for maximum distance / peak speed.
  */
 export class AutopilotAI {
@@ -29,12 +29,12 @@ export class AutopilotAI {
     }
   }
 
-  computeInput(cat, state, laserX, obstaclesRef, worldScale, onRequestBurst) {
+  computeInput(cat, state, laserX, obstaclesRef, worldScale, onRequestBurst, powerupsRef = null) {
     if (!this.enabled || state.phase !== 'playing') {
       return null;
     }
 
-    const phaseProtected = state.burstActive || state.stage2BurstActive;
+    const phaseProtected = state.burstActive || state.stage2BurstActive || state.shieldActive;
     const speed = Math.max(18, state.speed);
     const maxLatVel = 13.0 / (1 + state.normalizedSpeed * 0.42);
     const lookahead = Math.min(95, 36 + speed * 0.62);
@@ -43,9 +43,7 @@ export class AutopilotAI {
     let bestScore = Infinity;
     let emergencyThreat = false;
 
-    const { shardsActive, anomaliesActive, shards, anomalies } = obstaclesRef;
-    const swayRate = 2.6 + state.tearCount * 0.35;
-    const anomSpeedMult = 1.06 + state.tearCount * 0.03;
+    const { shardsActive, gatesActive, shards, gates } = obstaclesRef;
 
     for (let c = 0; c < this.candidates.length; c++) {
       const candX = this.candidates[c];
@@ -55,6 +53,18 @@ export class AutopilotAI {
       // Slight boundary comfort penalty so we don't hug walls unnecessarily
       if (Math.abs(candX) > 4.4) {
         score += 1.5;
+      }
+
+      // Gently pull toward safe collectible powerups ahead!
+      if (powerupsRef && powerupsRef.active) {
+        for (let i = 0; i < powerupsRef.items.length; i++) {
+          const pu = powerupsRef.items[i];
+          if (!pu.active || pu.z > 0.5 || pu.z < -lookahead * 0.8) continue;
+          const dx = Math.abs(candX - pu.x);
+          if (dx < 1.0) {
+            score -= (1.0 - dx) * 5.2;
+          }
+        }
       }
 
       if (!phaseProtected) {
@@ -77,12 +87,10 @@ export class AutopilotAI {
               score += (1.85 - dx) * (12 + urgency * 30);
             }
 
-            // Check if current cat path is threatened imminently
             if (distZ < 16 && Math.abs(cat.x - s.x) < 1.05) {
               emergencyThreat = true;
             }
 
-            // Reachability check: don't pick a lane across a close obstacle if unreachable
             const travelNeeded = Math.abs(candX - cat.x);
             if (distZ < 22 && travelNeeded > maxLatVel * dtImpact * 0.95) {
               score += 18;
@@ -90,37 +98,30 @@ export class AutopilotAI {
           }
         }
 
-        // 2. Evaluate moving/swaying anomaly monoliths ahead (predictive sinusoidal forecast)
-        if (anomaliesActive) {
-          for (let i = 0; i < anomalies.length; i++) {
-            const a = anomalies[i];
-            if (!a.active || a.z > 1.0 || a.z < -lookahead) continue;
+        // 2. Evaluate lane-locked Dimensional Rift Pylons ahead
+        if (gatesActive) {
+          for (let i = 0; i < gates.length; i++) {
+            const g = gates[i];
+            if (!g.active || g.z > 1.0 || g.z < -lookahead) continue;
 
-            const distZ = Math.max(0.1, -a.z);
-            const effWorldSpeed = Math.max(12, speed * anomSpeedMult * worldScale);
-            const dtImpact = distZ / effWorldSpeed;
+            const distZ = Math.max(0.1, -g.z);
+            const dtImpact = distZ / Math.max(12, speed * worldScale);
+            const dx = Math.abs(candX - g.x);
+            const urgency = 1 - distZ / lookahead;
 
-            // Forecast where the anomaly will sway at the exact moment it reaches z=0!
-            const futurePhase = a.phase + swayRate * worldScale * dtImpact;
-            const predX = Math.max(-4.8, Math.min(4.8, a.baseX + Math.sin(futurePhase) * a.swayAmp));
-            const futureY = 0.72 + Math.sin(futurePhase * 1.7) * 0.28;
+            if (dx < 1.35) {
+              score += (1.35 - dx) * (95 + urgency * 360);
+            } else if (dx < 1.9) {
+              score += (1.9 - dx) * (14 + urgency * 32);
+            }
 
-            // Only threat if within vertical hit envelope
-            if (Math.abs(futureY - (cat.y + 0.5)) < 1.05) {
-              const dxPred = Math.abs(candX - predX);
-              const dxNow = Math.abs(candX - a.x);
-              const minDx = Math.min(dxPred, dxNow * 1.15);
-              const urgency = 1 - distZ / lookahead;
+            if (distZ < 18 && Math.abs(cat.x - g.x) < 1.08) {
+              emergencyThreat = true;
+            }
 
-              if (minDx < 1.48) {
-                score += (1.48 - minDx) * (95 + urgency * 360);
-              } else if (minDx < 2.05) {
-                score += (2.05 - minDx) * (14 + urgency * 35);
-              }
-
-              if (distZ < 18 && Math.abs(cat.x - predX) < 1.1) {
-                emergencyThreat = true;
-              }
+            const travelNeeded = Math.abs(candX - cat.x);
+            if (distZ < 22 && travelNeeded > maxLatVel * dtImpact * 0.95) {
+              score += 18;
             }
           }
         }

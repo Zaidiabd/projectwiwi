@@ -97,11 +97,11 @@ export class AfterimageSystem {
     const anyBurst = state.burstActive || state.stage2BurstActive;
     const shouldEmit =
       state.phase === 'playing' &&
-      (state.actIndex >= 2 || state.isBoosting || anyBurst || state.saiyanMode) &&
+      (state.actIndex >= 2 || state.isBoosting || anyBurst || state.overdriveMode) &&
       state.speed > 18;
 
     if (shouldEmit) {
-      const interval = state.saiyanMode
+      const interval = state.overdriveMode
         ? 0.018
         : anyBurst
           ? 0.028
@@ -127,7 +127,7 @@ export class AfterimageSystem {
         p.mesh.visible = false;
       } else {
         const t = p.life / p.maxLife;
-        p.mat.uniforms.uOpacity.value = t * (state.saiyanMode ? 0.68 : 0.55);
+        p.mat.uniforms.uOpacity.value = t * (state.overdriveMode ? 0.68 : 0.55);
       }
     }
   }
@@ -142,14 +142,14 @@ export class AfterimageSystem {
     this.colorCycle = (this.colorCycle + 1) % 3;
 
     let tint = this.colorCycle % 2 === 0 ? '#22e6ff' : '#9333ea';
-    if (state.saiyanMode) {
-      // Distinct supersonic light-yellow, crimson-red, and electric-blue speed ghosts
+    if (state.overdriveMode) {
+      // Distinct supersonic electric-cyan, crimson-red, and ice-white smeared ghosts
       tint =
         this.colorCycle === 0
-          ? '#fef08a'
+          ? '#38f3ff'
           : this.colorCycle === 1
             ? '#ff2a4b'
-            : '#38bdf8';
+            : '#e0f2fe';
       p.mat.uniforms.uStreak.value = 1.65;
       p.mesh.scale.set(1.36, 0.86, 1);
       p.speedMult = 1.18;
@@ -166,14 +166,14 @@ export class AfterimageSystem {
         tint = '#38f3ff';
       } else if (state.tearCount >= 5) {
         tint = this.colorCycle % 2 === 0 ? '#ff2a4b' : '#a855f7';
-      } else if (state.anomalyMode) {
+      } else if (state.riftGateMode) {
         tint = this.colorCycle % 2 === 0 ? '#2dd4bf' : '#e879f9';
       }
     }
 
     p.mat.uniforms.uTint.value.set(tint);
     p.mesh.position.set(
-      cat.x + (state.saiyanMode ? (Math.random() - 0.5) * 0.14 : 0),
+      cat.x + (state.overdriveMode ? (Math.random() - 0.5) * 0.14 : 0),
       cat.y,
       0.06
     );
@@ -181,6 +181,6 @@ export class AfterimageSystem {
     p.mesh.visible = true;
     p.active = true;
     p.life = p.maxLife;
-    p.mat.uniforms.uOpacity.value = state.saiyanMode ? 0.68 : 0.55;
+    p.mat.uniforms.uOpacity.value = state.overdriveMode ? 0.68 : 0.55;
   }
 }

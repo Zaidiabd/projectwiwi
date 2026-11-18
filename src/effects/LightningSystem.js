@@ -30,7 +30,7 @@ export class LightningSystem {
       const positions = new Float32Array(vertCount * 3);
       const geom = createRibbonGeometry(positions);
 
-      // Reserve slots 0..5 for black-core high-contrast lightning during Saiyan Powerup
+      // Reserve slots 0..5 for black-core high-contrast lightning during Dual Overdrive
       const isBlackCoreSlot = i < 6;
       const mat = new THREE.MeshBasicMaterial({
         color: isBlackCoreSlot ? '#05050a' : '#22e6ff',
@@ -76,17 +76,17 @@ export class LightningSystem {
   }
 
   update(worldDt, cat, state, beatEnergy = 0, lily = null) {
-    // 1. Electric charges emanating directly off Wiwi's body (and Lily during 179s+ Saiyan overdrive)
+    // 1. Electric charges emanating directly off Wiwi's body (and Lily during 179s+ Dual Overdrive)
     if (state.phase === 'playing' && state.bodyChargeLevel >= 1) {
-      const chargeRate = state.saiyanMode
+      const chargeRate = state.overdriveMode
         ? 0.018
         : Math.max(0.025, 0.11 - state.bodyChargeLevel * 0.016);
       this.bodyChargeTimer += worldDt * (1 + beatEnergy * 0.9);
       if (this.bodyChargeTimer >= chargeRate) {
         this.bodyChargeTimer = 0;
         this.triggerBodyArc(cat, state);
-        if (state.saiyanMode && lily && lily.group.visible && Math.random() < 0.72) {
-          this.triggerLilySaiyanArc(lily);
+        if (state.overdriveMode && lily && lily.group.visible && Math.random() < 0.78) {
+          this.triggerLilyOverdriveArc(lily);
         }
       }
     }
@@ -96,7 +96,7 @@ export class LightningSystem {
       state.phase === 'playing' &&
       (state.actIndex >= 2 || state.burstActive || state.stage2BurstActive);
     if (envActive) {
-      const rate = state.saiyanMode
+      const rate = state.overdriveMode
         ? 0.024
         : Math.max(0.035, 0.14 - state.tearCount * 0.018);
       this.ambientTimer += worldDt * (1 + beatEnergy * 1.4);
@@ -120,7 +120,7 @@ export class LightningSystem {
   }
 
   pickArcColor(state) {
-    if (state.saiyanMode) {
+    if (state.overdriveMode) {
       // Intense Red and Electric Blue outer lightning paired with Black-Core bolts
       return Math.random() > 0.48 ? '#ff1a35' : '#2563eb';
     }
@@ -130,7 +130,7 @@ export class LightningSystem {
     if (state.tearCount >= 5) {
       return Math.random() > 0.4 ? '#ff2a4b' : '#c084fc';
     }
-    if (state.anomalyMode) {
+    if (state.riftGateMode) {
       return Math.random() > 0.5 ? '#2dd4bf' : '#e879f9';
     }
     return Math.random() > 0.45 ? '#22e6ff' : '#a855f7';
@@ -173,7 +173,7 @@ export class LightningSystem {
 
   triggerBodyArc(cat, state) {
     const angle = Math.random() * Math.PI * 2;
-    const spread = (state.saiyanMode ? 1.45 : 0.7) + state.bodyChargeLevel * 0.36;
+    const spread = (state.overdriveMode ? 1.45 : 0.7) + state.bodyChargeLevel * 0.36;
     const startX = cat.x + (Math.random() - 0.5) * 0.55;
     const startY = cat.y + 0.35 + Math.random() * 0.65;
     const startZ = (Math.random() - 0.5) * 0.25;
@@ -182,22 +182,22 @@ export class LightningSystem {
     const endY = Math.max(0.06, startY + Math.sin(angle) * spread * 0.85);
     const endZ = startZ + 0.4 + Math.random() * 1.6;
 
-    const jitter = (state.saiyanMode ? 0.55 : 0.25) + state.bodyChargeLevel * 0.04;
-    const baseWidth = state.saiyanMode ? 0.14 : 0.055;
+    const jitter = (state.overdriveMode ? 0.55 : 0.25) + state.bodyChargeLevel * 0.04;
+    const baseWidth = state.overdriveMode ? 0.14 : 0.055;
 
     // Outer thick red / blue / violet bolt
     const outerBolt = this.findFreeSlot(false);
     if (outerBolt) {
       outerBolt.mat.color.set(this.pickArcColor(state));
       this.writeRibbonPath(outerBolt, startX, startY, startZ, endX, endY, endZ, jitter, baseWidth);
-      outerBolt.maxLife = state.saiyanMode ? 0.12 : 0.09;
+      outerBolt.maxLife = state.overdriveMode ? 0.12 : 0.09;
       outerBolt.life = outerBolt.maxLife;
       outerBolt.mat.opacity = 0.96;
       outerBolt.mesh.visible = true;
     }
 
-    // During Saiyan Powerup, pair with a sharp black lightning core arc!
-    if (state.saiyanMode && Math.random() < 0.72) {
+    // During Dual Overdrive, pair with a sharp black lightning core arc!
+    if (state.overdriveMode && Math.random() < 0.72) {
       const blackBolt = this.findFreeSlot(true);
       if (blackBolt && blackBolt.isBlackCoreSlot) {
         blackBolt.mat.color.set('#05050a');
@@ -220,7 +220,7 @@ export class LightningSystem {
     }
   }
 
-  triggerLilySaiyanArc(lily) {
+  triggerLilyOverdriveArc(lily) {
     const angle = Math.random() * Math.PI * 2;
     const spread = 1.65;
     const startX = lily.x + (Math.random() - 0.5) * 0.65;
@@ -233,15 +233,15 @@ export class LightningSystem {
 
     const outerBolt = this.findFreeSlot(false);
     if (outerBolt) {
-      outerBolt.mat.color.set(Math.random() > 0.4 ? '#fde047' : '#34d399');
-      this.writeRibbonPath(outerBolt, startX, startY, startZ, endX, endY, endZ, 0.48, 0.12);
+      outerBolt.mat.color.set(Math.random() > 0.4 ? '#34d399' : '#ff2a4b');
+      this.writeRibbonPath(outerBolt, startX, startY, startZ, endX, endY, endZ, 0.48, 0.125);
       outerBolt.maxLife = 0.12;
       outerBolt.life = outerBolt.maxLife;
       outerBolt.mat.opacity = 0.95;
       outerBolt.mesh.visible = true;
     }
 
-    if (Math.random() < 0.6) {
+    if (Math.random() < 0.65) {
       const blackBolt = this.findFreeSlot(true);
       if (blackBolt && blackBolt.isBlackCoreSlot) {
         blackBolt.mat.color.set('#05050a');
@@ -255,7 +255,7 @@ export class LightningSystem {
   }
 
   triggerBolt(cat, state) {
-    const nearCat = state.actIndex === 2 || state.saiyanMode || Math.random() < 0.35;
+    const nearCat = state.actIndex === 2 || state.overdriveMode || Math.random() < 0.35;
     const startX = nearCat ? cat.x + (Math.random() - 0.5) * 2.2 : (Math.random() - 0.5) * 14;
     const startY = nearCat ? 0.6 + Math.random() * 1.4 : 1.0 + Math.random() * 5.5;
     const startZ = nearCat ? -1.4 : -22 - Math.random() * 50;
@@ -264,8 +264,8 @@ export class LightningSystem {
     const endY = nearCat ? 0.1 + Math.random() * 4.4 : 0.1 + Math.random() * 6.8;
     const endZ = nearCat ? startZ - 4 - Math.random() * 10 : startZ - 14;
 
-    const width = state.saiyanMode ? 0.19 : 0.07;
-    const bolt = this.findFreeSlot(state.saiyanMode && Math.random() < 0.45);
+    const width = state.overdriveMode ? 0.19 : 0.07;
+    const bolt = this.findFreeSlot(state.overdriveMode && Math.random() < 0.45);
     if (!bolt) return;
 
     bolt.mat.color.set(bolt.isBlackCoreSlot ? '#05050a' : this.pickArcColor(state));

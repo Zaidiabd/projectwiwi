@@ -20,16 +20,15 @@ An interactive 2.5D browser speed-running experience built with Three.js (WebGL 
 
 ## Timed Sequence (`216s` Audio-Synced Run)
 
-- `0s – 18s`: Quiet opening into acceleration corridor (Temporal Burst locked).
-- `18s – 25.65s`: **24-FPS Projection Speedster Rival** darts ahead across stepped 24-FPS translucent glass projection frames until Wiwi outspeeds him right before Overclock, shattering the projection frames and blasting him backward into the dust.
+- `0s – 26s`: Quiet opening into acceleration corridor (Temporal Burst locked; collectible track powerups spawn from Stage II onward).
 - `26s`: Overclock slow-motion beat + `Space` Temporal Burst unlocks.
 - `38s`: First space-time fabric tear; electric charges emanate from Wiwi's body.
 - `50s`: Second space-time tear; speed and electric intensity escalate.
-- `62s`: Third space-time tear; **Space Tear Anomaly** environment shift & swaying anomaly monolith obstacles.
+- `62s`: Third space-time tear; **Dimensional Rift Pylon Gates** (fair, lane-locked obstacles with glowing ground telegraph strips) replace the opening hazard cadence alongside collectible Velocity Surge, Aegis Shield, and Temporal Cell powerups.
 - `75s`: Fourth space-time tear; hyperstorm escalation.
 - `136s – 142s`: **Stage II Temporal Burst** (golden-crimson time-dilation overdrive) leading into Tear V (`142s`).
 - `142s – 216s`: **TEAR V** — Tactical **`! RIVAL DETECTED !`** warning alert triggers as big long-haired black-and-white cat **Lily** joins the chase alongside Wiwi (triggering Wiwi's pulsing `💢` anger symbol) in a race to clear the `23,000 m` threshold.
-- `179s`: **Saiyan Powerup** halfway through TEAR V — both Wiwi and Lily ignite into Saiyan Overdrive (luminous light-yellow fur & aura, thick red/black/blue voltage arcs for Wiwi paired with golden-emerald aura, lightning, and sparks for Lily, plus supersonic smeared speed afterimages).
+- `179s`: **Dual Overdrive Powerup** halfway through TEAR V — both Wiwi and Lily erupt into synchronized Overdrive (electric cyan/crimson plasma rim highlights, swirling energy auras & orbiting halo rings on both cats, thick red/black/blue lightning on Wiwi paired with emerald/crimson/black lightning on Lily, and supersonic smeared speed afterimages).
 - `216s`: Both cats leap through the final rift into abrupt silence inside a quiet living room; if `distance >= 23,000 m`, Wiwi catches the laser while Lily is shocked (`UNIVERSE DESTROYED. LASER ACQUIRED.`); otherwise Lily steals it while Wiwi belly-flops (`UNIVERSE DESTROYED. LILY STOLE THE LASER.`).
 
 ## Running Locally
@@ -60,6 +59,6 @@ All asset and module references use relative `./` paths and require **no build s
 ## Architecture Highlights
 
 - `src/player/ProceduralCatAtlas.js` + `CatAnimator.js` + `CatController.js`: 13-clip 2D sprite atlas (`2048x2048` `CanvasTexture`) matching the gray British Shorthair Munchkin design sheet (`assets/characters/wiwi-munchkin/design-sheet.jpg`), rendered with a custom rim-lit `ShaderMaterial` and grounded contact shadow.
-- `src/player/AutopilotAI.js`: Predictive AI playthrough controller forecasting static shards and swaying anomaly trajectories to avoid every obstacle while maximizing slipstream, boost, and Temporal Burst distance.
+- `src/player/AutopilotAI.js`: Predictive AI playthrough controller forecasting static shards and lane-locked Dimensional Rift Pylons ahead of the cat while steering toward safe collectible powerups, slipstream, Boost, and Temporal Burst distance.
 - `src/core/TimeController.js`: Independent `realTime`, `playerTime`, `worldTime`, and `cinematicTime` domains with `dt` clamping (`<= 0.05s`) and `visibilitychange` auto-pause.
 - `src/world/` & `src/effects/`: Instanced 3D corridor, speed void, floating rift shards, interactive reality obstacles, pooled afterimages, pooled 3D lightning, custom GLSL volumetric rift portal, and a single-pass `CompositeShader` post-processing stage scaled by `Low` / `Medium` / `High` quality presets.

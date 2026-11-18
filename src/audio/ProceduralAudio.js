@@ -251,35 +251,22 @@ export class ProceduralAudio {
     });
   }
 
-  playGlassShatter() {
+  playPowerupPickup() {
     const now = this.ctx.currentTime;
-    // High crystalline shatter + punchy sub-snap for broken 24-fps projection frames
-    const sub = this.ctx.createOscillator();
-    const subG = this.ctx.createGain();
-    sub.type = 'sine';
-    sub.frequency.setValueAtTime(190, now);
-    sub.frequency.exponentialRampToValueAtTime(42, now + 0.24);
-    subG.gain.setValueAtTime(0.32, now);
-    subG.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
-    sub.connect(subG);
-    subG.connect(this.fxGain);
-    sub.start(now);
-    sub.stop(now + 0.28);
-
-    const shardFreqs = [1840, 2630, 3420, 4190, 5120];
-    shardFreqs.forEach((freq, idx) => {
-      const t = now + idx * 0.022;
+    // Sparkling ascending 3-note chime when picking up a track powerup orb
+    [523.25, 659.25, 987.77].forEach((freq, i) => {
+      const t = now + i * 0.048;
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
-      osc.type = 'triangle';
+      osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, t);
-      osc.frequency.exponentialRampToValueAtTime(freq * 0.62, t + 0.18);
-      g.gain.setValueAtTime(0.09, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.12, t + 0.14);
+      g.gain.setValueAtTime(0.18, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
       osc.connect(g);
       g.connect(this.fxGain);
       osc.start(t);
-      osc.stop(t + 0.22);
+      osc.stop(t + 0.18);
     });
   }
 }

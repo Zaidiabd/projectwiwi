@@ -30,6 +30,8 @@ export class HUD {
     this.rivalAlertSubEl = document.getElementById('rival-alert-sub');
     this.rivalAlertTimer = 0;
 
+    this.powerupBuffEl = document.getElementById('powerup-buff-pill');
+
     this.tempSyncTimerEl = document.getElementById('temp-sync-timer');
     this.syncSecEl = document.getElementById('hud-sync-sec');
     this.audioSecEl = document.getElementById('hud-audio-sec');
@@ -76,6 +78,7 @@ export class HUD {
       this.bannerTimer = 0;
       if (this.rivalAlertEl) this.rivalAlertEl.classList.add('hidden');
       this.rivalAlertTimer = 0;
+      if (this.powerupBuffEl) this.powerupBuffEl.classList.add('hidden');
     }
   }
 
@@ -132,7 +135,7 @@ export class HUD {
     this.peakSpeedEl.textContent = state.peakSpeed.toFixed(1);
     const barPct = Math.min(100, (state.speed / 172) * 100);
     this.speedBarEl.style.width = `${barPct.toFixed(1)}%`;
-    this.speedCardEl.classList.toggle('saiyan-active', state.saiyanMode);
+    this.speedCardEl.classList.toggle('overdrive-active', state.overdriveMode);
 
     const heat = Math.min(1, Math.max(0, (state.speed - 22) / 108));
     let r, g, b;
@@ -199,6 +202,26 @@ export class HUD {
     }
 
     this.promptEl.classList.toggle('faded', state.hasMovedOnce);
+
+    if (this.powerupBuffEl) {
+      const buffs = [];
+      if (state.shieldActive && state.shieldTimer > 0) {
+        buffs.push(`SHIELD ${state.shieldTimer.toFixed(1)}s`);
+      }
+      if (state.surgeTimer > 0) {
+        buffs.push(`SURGE +18% (${state.surgeTimer.toFixed(1)}s)`);
+      }
+      if (state.overdriveMode) {
+        buffs.push('DUAL OVERDRIVE');
+      }
+      if (buffs.length > 0 && state.phase === 'playing') {
+        this.powerupBuffEl.textContent = buffs.join('  •  ');
+        this.powerupBuffEl.style.borderColor = state.shieldActive ? '#34d399' : state.overdriveMode ? '#ff2a4b' : '#22e6ff';
+        this.powerupBuffEl.classList.remove('hidden');
+      } else {
+        this.powerupBuffEl.classList.add('hidden');
+      }
+    }
 
     if (this.debugEnabled) {
       this.fpsAccum += timeCtrl.realDt;

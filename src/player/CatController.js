@@ -21,7 +21,7 @@ const CAT_FRAGMENT_SHADER = /* glsl */ `
   uniform float uRimIntensity;
   uniform vec3 uLaserTint;
   uniform float uOpacity;
-  uniform float uSaiyan;
+  uniform float uOverdrive;
   uniform vec2 uTexelSize;
 
   varying vec2 vUv;
@@ -37,14 +37,13 @@ const CAT_FRAGMENT_SHADER = /* glsl */ `
     float edge = clamp((1.0 - aUp) * 0.65 + (1.0 - min(aL, aR)) * 0.45, 0.0, 1.0);
 
     vec3 color = tex.rgb;
-    if (uSaiyan > 0.01) {
-      // Shift blue-gray fur to luminous light-yellow Saiyan fur while preserving dark ink outlines
+    if (uOverdrive > 0.01) {
+      // Preserve natural gray fur while charging coat edges & highlights with crimson/cyan plasma luminescence
       float luma = dot(color, vec3(0.299, 0.587, 0.114));
-      float furMask = smoothstep(0.11, 0.28, luma);
-      vec3 saiyanShade = vec3(0.92, 0.74, 0.22);
-      vec3 saiyanBright = vec3(1.00, 0.96, 0.58);
-      vec3 saiyanFur = mix(saiyanShade, saiyanBright, smoothstep(0.26, 0.74, luma));
-      color = mix(color, saiyanFur, furMask * uSaiyan);
+      float highlightMask = smoothstep(0.22, 0.72, luma);
+      vec3 plasmaTint = mix(vec3(0.18, 0.88, 1.0), vec3(1.0, 0.22, 0.42), edge);
+      color = mix(color, color * 1.18 + plasmaTint * 0.34, highlightMask * uOverdrive * 0.72);
+      color += vec3(0.45, 0.92, 1.0) * edge * 0.52 * uOverdrive * tex.a;
     }
 
     color += uRimColor * edge * uRimIntensity * tex.a;
@@ -54,30 +53,30 @@ const CAT_FRAGMENT_SHADER = /* glsl */ `
   }
 `;
 
-function createSaiyanAuraTexture() {
+function createOverdriveAuraTexture() {
   const c = document.createElement('canvas');
   c.width = 256;
   c.height = 256;
   const ctx = c.getContext('2d');
   ctx.clearRect(0, 0, 256, 256);
 
-  // Soft outer golden glow
-  const g = ctx.createRadialGradient(128, 148, 18, 128, 138, 118);
-  g.addColorStop(0, 'rgba(254, 240, 138, 0.78)');
-  g.addColorStop(0.45, 'rgba(250, 204, 21, 0.42)');
-  g.addColorStop(0.75, 'rgba(255, 42, 75, 0.14)');
-  g.addColorStop(1, 'rgba(255, 220, 80, 0)');
+  // Surging electric crimson-cyan plasma core aura
+  const g = ctx.createRadialGradient(128, 148, 16, 128, 138, 120);
+  g.addColorStop(0, 'rgba(224, 248, 255, 0.86)');
+  g.addColorStop(0.35, 'rgba(56, 189, 248, 0.58)');
+  g.addColorStop(0.68, 'rgba(255, 42, 75, 0.36)');
+  g.addColorStop(1, 'rgba(34, 230, 255, 0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 256, 256);
 
-  // Spiky upward Saiyan flame tongues
-  ctx.fillStyle = 'rgba(254, 249, 195, 0.55)';
-  for (let i = 0; i < 11; i++) {
-    const t = (i / 10) * Math.PI;
+  // Sharp swept plasma flame plumes
+  for (let i = 0; i < 12; i++) {
+    const t = (i / 11) * Math.PI;
     const bx = 128 + Math.cos(t) * 58;
     const by = 165 - Math.sin(t) * 26;
-    const tipX = 128 + Math.cos(t) * 95;
-    const tipY = 148 - Math.sin(t) * 118 - (i % 2 === 0 ? 18 : 0);
+    const tipX = 128 + Math.cos(t) * 98;
+    const tipY = 148 - Math.sin(t) * 120 - (i % 2 === 0 ? 18 : 0);
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(56, 243, 255, 0.52)' : 'rgba(255, 58, 92, 0.45)';
     ctx.beginPath();
     ctx.moveTo(bx - 12, by + 18);
     ctx.quadraticCurveTo((bx + tipX) * 0.5 - 6, (by + tipY) * 0.5, tipX, tipY);
@@ -172,7 +171,7 @@ export class CatController {
         uRimIntensity: { value: 0.75 },
         uLaserTint: { value: new THREE.Color('#ff2a4b') },
         uOpacity: { value: 1.0 },
-        uSaiyan: { value: 0.0 },
+        uOverdrive: { value: 0.0 },
         uTexelSize: { value: new THREE.Vector2(1 / manifest.atlasWidth, 1 / manifest.atlasHeight) }
       },
       vertexShader: CAT_VERTEX_SHADER,
@@ -186,10 +185,10 @@ export class CatController {
     this.spriteMesh.renderOrder = 10;
     this.group.add(this.spriteMesh);
 
-    // Pulsing Saiyan golden aura behind Wiwi (179s+)
-    this.auraTex = createSaiyanAuraTexture();
-    const auraGeom = new THREE.PlaneGeometry(2.6, 2.4);
-    auraGeom.translate(0, 1.05, 0);
+    // Pulsing cosmic overdrive plasma aura behind Wiwi (179s+)
+    this.auraTex = createOverdriveAuraTexture();
+    const auraGeom = new THREE.PlaneGeometry(2.75, 2.5);
+    auraGeom.translate(0, 1.08, 0);
     this.auraMat = new THREE.MeshBasicMaterial({
       map: this.auraTex,
       transparent: true,
@@ -202,6 +201,40 @@ export class CatController {
     this.auraMesh.renderOrder = 9;
     this.auraMesh.visible = false;
     this.group.add(this.auraMesh);
+
+    // Rotating orbital overdrive energy ring around Wiwi (179s+)
+    const ringGeom = new THREE.RingGeometry(0.95, 1.15, 36);
+    this.overdriveRingMat = new THREE.MeshBasicMaterial({
+      color: '#38f3ff',
+      transparent: true,
+      opacity: 0.72,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    this.overdriveRingMesh = new THREE.Mesh(ringGeom, this.overdriveRingMat);
+    this.overdriveRingMesh.position.set(0, 0.72, 0.05);
+    this.overdriveRingMesh.rotation.x = Math.PI * 0.36;
+    this.overdriveRingMesh.renderOrder = 11;
+    this.overdriveRingMesh.visible = false;
+    this.group.add(this.overdriveRingMesh);
+
+    // Collectible Aegis Shield protective halo ring
+    const shieldGeom = new THREE.RingGeometry(1.12, 1.28, 36);
+    shieldGeom.rotateX(-Math.PI / 2);
+    this.shieldMat = new THREE.MeshBasicMaterial({
+      color: '#34d399',
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    this.shieldMesh = new THREE.Mesh(shieldGeom, this.shieldMat);
+    this.shieldMesh.position.y = 0.25;
+    this.shieldMesh.renderOrder = 12;
+    this.shieldMesh.visible = false;
+    this.group.add(this.shieldMesh);
 
     // Grounded projected shadow decal
     this.shadowTex = createShadowTexture();
@@ -253,7 +286,9 @@ export class CatController {
     this.spriteMesh.scale.set(1, 1, 1);
     this.angerMesh.visible = false;
     this.auraMesh.visible = false;
-    this.spriteMaterial.uniforms.uSaiyan.value = 0.0;
+    this.overdriveRingMesh.visible = false;
+    this.shieldMesh.visible = false;
+    this.spriteMaterial.uniforms.uOverdrive.value = 0.0;
 
     this.animator.play('idle', { restart: true });
     this.syncSpriteUV();
@@ -279,12 +314,13 @@ export class CatController {
   }
 
   update(playerDt, input, state, laserX, worldScale) {
-    // 1. Speed & boost simulation escalating through each tear stage + Saiyan Powerup (179s+)
+    // 1. Speed & boost simulation escalating through each tear stage + Dual Overdrive (179s+) + pickup surge
     const tearEscalation = state.tearCount * 12;
     const stage2Bonus = state.stage2BurstActive ? 22 : 0;
-    const saiyanBonus = state.saiyanMode ? 22 : 0;
-    const baseMaxSpeed = 28 + state.actIndex * 8 + tearEscalation + stage2Bonus + saiyanBonus;
-    const boostMaxSpeed = 48 + state.actIndex * 10 + tearEscalation * 1.2 + stage2Bonus * 1.15 + saiyanBonus * 1.25;
+    const overdriveBonus = state.overdriveMode ? 22 : 0;
+    const pickupMult = state.surgeTimer > 0 ? 1.18 : 1.0;
+    const baseMaxSpeed = (28 + state.actIndex * 8 + tearEscalation + stage2Bonus + overdriveBonus) * pickupMult;
+    const boostMaxSpeed = (48 + state.actIndex * 10 + tearEscalation * 1.2 + stage2Bonus * 1.15 + overdriveBonus * 1.25) * pickupMult;
     const wantsBoost = input.boost && state.boostEnergy > 0.04;
     state.isBoosting = wantsBoost && (input.forward || this.speed > 4);
 
@@ -407,26 +443,40 @@ export class CatController {
     this.shadowMesh.scale.setScalar(hFactor);
     this.shadowMat.opacity = 0.68 * hFactor;
 
-    // Saiyan light-yellow fur transformation & golden aura (179s+)
-    const targetSaiyan = state.saiyanMode ? 1.0 : 0.0;
-    this.spriteMaterial.uniforms.uSaiyan.value +=
-      (targetSaiyan - this.spriteMaterial.uniforms.uSaiyan.value) * (1 - Math.exp(-8 * playerDt));
+    // Dual Overdrive plasma transformation & orbital ring (179s+)
+    const targetOverdrive = state.overdriveMode ? 1.0 : 0.0;
+    this.spriteMaterial.uniforms.uOverdrive.value +=
+      (targetOverdrive - this.spriteMaterial.uniforms.uOverdrive.value) * (1 - Math.exp(-8 * playerDt));
 
-    this.auraMesh.visible = state.saiyanMode;
-    if (state.saiyanMode) {
+    this.auraMesh.visible = state.overdriveMode;
+    this.overdriveRingMesh.visible = state.overdriveMode;
+    if (state.overdriveMode) {
       const t = state.runElapsed;
       this.auraMesh.position.y = this.y;
-      const sx = 1.05 + Math.sin(t * 28) * 0.12;
-      const sy = 1.10 + Math.cos(t * 34) * 0.14;
+      const sx = 1.06 + Math.sin(t * 28) * 0.14;
+      const sy = 1.12 + Math.cos(t * 34) * 0.16;
       this.auraMesh.scale.set(sx, sy, 1);
-      this.auraMat.opacity = 0.72 + Math.sin(t * 42) * 0.22;
+      this.auraMat.opacity = 0.74 + Math.sin(t * 42) * 0.22;
+
+      this.overdriveRingMesh.position.y = this.y + 0.72;
+      this.overdriveRingMesh.rotation.z += playerDt * 7.5;
+      this.overdriveRingMesh.rotation.y = Math.sin(t * 5) * 0.4;
+      this.overdriveRingMesh.scale.setScalar(1.0 + Math.sin(t * 20) * 0.12);
+      this.overdriveRingMat.color.set(Math.sin(t * 16) > 0 ? '#38f3ff' : '#ff2a4b');
     }
 
-    // Update rim-light color with Saiyan powerup, tear stage, anomaly vibe & burst stage
+    this.shieldMesh.visible = state.shieldActive;
+    if (state.shieldActive) {
+      this.shieldMesh.position.y = this.y + 0.24;
+      this.shieldMesh.rotation.z += playerDt * 4.5;
+      this.shieldMesh.scale.setScalar(0.95 + Math.sin(state.runElapsed * 12) * 0.09);
+    }
+
+    // Update rim-light color with Dual Overdrive, tear stage, rift gates & burst stage
     const rim = this.spriteMaterial.uniforms.uRimColor.value;
-    if (state.saiyanMode) {
-      rim.set('#fef08a');
-      this.spriteMaterial.uniforms.uRimIntensity.value = 1.38;
+    if (state.overdriveMode) {
+      rim.set(Math.sin(state.runElapsed * 16) > 0 ? '#38f3ff' : '#ff2a4b');
+      this.spriteMaterial.uniforms.uRimIntensity.value = 1.42;
     } else if (state.stage2BurstActive || (state.burstActive && state.burstStage === 2)) {
       rim.set('#ffbe3b');
       this.spriteMaterial.uniforms.uRimIntensity.value = 1.25;
@@ -436,7 +486,7 @@ export class CatController {
     } else if (state.tearCount >= 5) {
       rim.set('#ff2a4b');
       this.spriteMaterial.uniforms.uRimIntensity.value = 1.05;
-    } else if (state.anomalyMode) {
+    } else if (state.riftGateMode) {
       rim.set('#2dd4bf');
       this.spriteMaterial.uniforms.uRimIntensity.value = 0.92;
     } else if (state.tearCount >= 1) {
@@ -521,9 +571,11 @@ export class CatController {
     this.spriteMesh.rotation.z = step === 2 && showAnger ? Math.sin(endingTimer * 28) * 0.035 : 0;
     this.spriteMesh.scale.set(1, 1, 1);
 
-    // Saiyan powerup fades cleanly into normal cozy Munchkin once landing in the peaceful room
+    // Dual Overdrive powerup fades cleanly into normal cozy Munchkin once landing in the peaceful room
     this.auraMesh.visible = step === 0;
-    this.spriteMaterial.uniforms.uSaiyan.value = step === 0 ? 1.0 : Math.max(0, this.spriteMaterial.uniforms.uSaiyan.value - dt * 2.5);
+    this.overdriveRingMesh.visible = false;
+    this.shieldMesh.visible = false;
+    this.spriteMaterial.uniforms.uOverdrive.value = step === 0 ? 1.0 : Math.max(0, this.spriteMaterial.uniforms.uOverdrive.value - dt * 2.5);
 
     this.angerMesh.visible = showAnger;
     if (showAnger) {

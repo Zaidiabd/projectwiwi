@@ -187,8 +187,8 @@ export class AudioManager {
     if (this.procedural) this.procedural.playRivalAlert();
   }
 
-  playGlassShatter() {
-    if (this.procedural) this.procedural.playGlassShatter();
+  playPowerupPickup() {
+    if (this.procedural) this.procedural.playPowerupPickup();
   }
 
   getTrackTime() {

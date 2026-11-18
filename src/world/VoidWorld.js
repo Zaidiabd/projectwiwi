@@ -77,7 +77,7 @@ export class VoidWorld {
         this.color.set(it.hue > 0.5 ? '#ffbe3b' : '#ff2a85');
       } else if (state.tearCount >= 5) {
         this.color.set(it.hue > 0.45 ? '#ff2a4b' : '#c084fc');
-      } else if (state.anomalyMode) {
+      } else if (state.riftGateMode) {
         this.color.set(it.hue > 0.5 ? '#2dd4bf' : '#e879f9');
       } else if (state.actIndex >= 3 && it.hue > 0.72) {
         this.color.set('#ff2a4b');

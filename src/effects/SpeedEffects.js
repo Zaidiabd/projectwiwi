@@ -149,14 +149,14 @@ export class SpeedEffects {
   }
 
   pickWiwiSparkColor(state) {
-    if (state.saiyanMode) {
+    if (state.overdriveMode) {
       const r = Math.random();
-      return r < 0.4 ? '#fef08a' : r < 0.72 ? '#ff1a35' : '#38bdf8';
+      return r < 0.4 ? '#38f3ff' : r < 0.72 ? '#ff1a35' : '#e0f2fe';
     }
     if (state.stage2BurstActive) return Math.random() > 0.4 ? '#ffbe3b' : '#ff2a85';
     if (state.burstActive) return '#38f3ff';
     if (state.tearCount >= 5) return Math.random() > 0.5 ? '#ff2a4b' : '#c084fc';
-    if (state.anomalyMode) return Math.random() > 0.5 ? '#2dd4bf' : '#e879f9';
+    if (state.riftGateMode) return Math.random() > 0.5 ? '#2dd4bf' : '#e879f9';
     return '#22e6ff';
   }
 
@@ -165,7 +165,7 @@ export class SpeedEffects {
     this.sparkMesh.visible = isPlaying;
 
     if (isPlaying && state.speed > 10) {
-      const interval = state.saiyanMode ? 0.018 : state.isBoosting ? 0.028 : 0.05;
+      const interval = state.overdriveMode ? 0.018 : state.isBoosting ? 0.028 : 0.05;
       this.pawEmitTimer += worldDt;
       if (this.pawEmitTimer >= interval) {
         this.pawEmitTimer = 0;
@@ -178,19 +178,19 @@ export class SpeedEffects {
           0.9 + Math.random() * 2.1,
           state.speed * 0.55 + Math.random() * 6,
           this.pickWiwiSparkColor(state),
-          state.saiyanMode ? 0.42 : 0.30,
-          state.saiyanMode ? 1.45 : 0.95
+          state.overdriveMode ? 0.42 : 0.30,
+          state.overdriveMode ? 1.45 : 0.95
         );
       }
 
-      // Lily paw-trail sparks during TEAR V (emerald & white -> golden/emerald Saiyan overdrive at 179s+)
+      // Lily paw-trail sparks during TEAR V (emerald & white -> emerald/crimson Dual Overdrive at 179s+)
       if (state.tearCount >= 5 && lily.group.visible) {
         this.lilyEmitTimer += worldDt;
-        const lilyInterval = state.saiyanMode ? 0.020 : 0.036;
+        const lilyInterval = state.overdriveMode ? 0.020 : 0.036;
         if (this.lilyEmitTimer >= lilyInterval) {
           this.lilyEmitTimer = 0;
-          const col = state.saiyanMode
-            ? (Math.random() < 0.55 ? '#fde047' : Math.random() < 0.5 ? '#34d399' : '#fef08a')
+          const col = state.overdriveMode
+            ? (Math.random() < 0.52 ? '#34d399' : Math.random() < 0.5 ? '#ff2a4b' : '#a7f3d0')
             : (Math.random() > 0.45 ? '#34d399' : '#f1f5f9');
           this.emitSpark(
             lily.x + (Math.random() - 0.5) * 0.55,
@@ -200,8 +200,8 @@ export class SpeedEffects {
             1.1 + Math.random() * 2.2,
             state.speed * 0.54,
             col,
-            state.saiyanMode ? 0.42 : 0.32,
-            state.saiyanMode ? 1.45 : 1.1
+            state.overdriveMode ? 0.42 : 0.32,
+            state.overdriveMode ? 1.45 : 1.1
           );
         }
       }
