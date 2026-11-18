@@ -56,8 +56,9 @@ export class AutopilotAI {
             if (!item.active || item.z > 1.8 || item.z < -lookahead) continue;
             if (item.lane === laneIdx) {
               const distZ = Math.max(0.2, -item.z);
-              const urgency = 1 - distZ / lookahead;
-              score += 180 + urgency * 750;
+              const norm = Math.max(0, 1 - distZ / lookahead);
+              const urgency = norm * norm * norm;
+              score += (distZ < 28 ? 2400 : 120) + urgency * 1800;
               if (distZ < 16 && cat.laneIndex === laneIdx) {
                 emergencyThreat = true;
               }
@@ -71,8 +72,9 @@ export class AutopilotAI {
           if (!h.active || h.z > 2.4 || h.z < -lookahead * 1.1) continue;
           if (h.coveredLanes.includes(laneIdx)) {
             const distZ = Math.max(0.2, -h.z);
-            const urgency = 1 - distZ / (lookahead * 1.1);
-            score += 320 + urgency * 950;
+            const norm = Math.max(0, 1 - distZ / (lookahead * 1.1));
+            const urgency = norm * norm * norm;
+            score += (distZ < 34 ? 3200 : 180) + urgency * 2200;
             if (distZ < 20 && h.coveredLanes.includes(cat.laneIndex)) {
               emergencyThreat = true;
             }

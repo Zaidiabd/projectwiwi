@@ -469,6 +469,12 @@ export class ObstacleSystem {
 
     this.dummy = new THREE.Object3D();
     this.color = new THREE.Color();
+    this.activeMode = 'none';
+    this.waveTrackers = {
+      vehicles: { waveIndex: 0, safeLane: 1, occupiedMask: 0, currentCount: 0, maxInWave: 1, waveZ: -55 },
+      debris: { waveIndex: 0, safeLane: 1, occupiedMask: 0, currentCount: 0, maxInWave: 1, waveZ: -55 },
+      pillars: { waveIndex: 0, safeLane: 1, occupiedMask: 0, currentCount: 0, maxInWave: 1, waveZ: -55 }
+    };
 
     // ---------------------------------------------------------
     // 1. Stage 2 & Stage 3 Overclock: Sculpted Aerodynamic Cars & Sport-Bikes
@@ -501,12 +507,13 @@ export class ObstacleSystem {
       this.bikeMesh.setColorAt(i, this.color);
     }
 
+    // Uniform relative speed so vehicles never overtake each other to form a 3-lane wall
     this.vehicles = Array.from({ length: MAX_LANE_VEHICLES }, (_, i) => ({
       lane: i % 3,
       x: LANES[i % 3],
-      z: -38 - i * 19,
+      z: -55 - i * 30,
       isBike: i % 2 === 1,
-      relSpeed: 10 + (i % 3) * 4,
+      relSpeed: 10,
       colorHex: VEHICLE_COLORS[i % VEHICLE_COLORS.length],
       active: false,
       grazed: false,
@@ -717,6 +724,7 @@ export class ObstacleSystem {
     this.pillarCoreMesh.count = this.pillarLimit;
     this.pillarOutlineMesh.count = this.pillarLimit;
     this.chargeRingMesh.count = this.pillarLimit;
+    this.reset();
   }
 
   hideAll() {
@@ -734,44 +742,11 @@ export class ObstacleSystem {
 
   reset() {
     this.hideAll();
-    for (let i = 0; i < MAX_LANE_VEHICLES; i++) {
-      const v = this.vehicles[i];
-      v.lane = i % 3;
-      v.x = LANES[v.lane];
-      v.z = -42 - i * 21;
-      v.active = true;
-      v.grazed = false;
-      v.hitCooldown = 0;
-    }
-    for (let i = 0; i < MAX_LANE_DEBRIS; i++) {
-      const d = this.debris[i];
-      d.lane = (i * 2) % 3;
-      d.x = LANES[d.lane];
-      d.z = -50 - i * 22;
-      d.active = true;
-      d.grazed = false;
-      d.hitCooldown = 0;
-    }
-    for (let i = 0; i < MAX_HAND_STOMPS; i++) {
-      const h = this.handStomps[i];
-      h.isLeft = i % 2 === 0;
-      h.x = h.isLeft ? -1.5 : 1.5;
-      h.coveredLanes = h.isLeft ? [0, 1] : [1, 2];
-      h.exitLane = h.isLeft ? 2 : 0;
-      h.z = -52 - i * 36;
-      h.active = true;
-      h.grazed = false;
-      h.hitCooldown = 0;
-    }
-    for (let i = 0; i < MAX_PILLARS; i++) {
-      const p = this.pillars[i];
-      p.lane = i % 3;
-      p.x = LANES[p.lane];
-      p.z = -45 - i * 20;
-      p.active = true;
-      p.grazed = false;
-      p.hitCooldown = 0;
-    }
+    this.activeMode = 'none';
+    this.layoutWavePool('vehicles', this.vehicles, this.vehicleLimit, -52, 30);
+    this.layoutWavePool('debris', this.debris, this.debrisLimit, -54, 30);
+    this.layoutHandStomps(-58, 44);
+    this.layoutWavePool('pillars', this.pillars, this.pillarLimit, -54, 34);
   }
 
   hideInstance(mesh, index) {
@@ -781,26 +756,134 @@ export class ObstacleSystem {
     mesh.setMatrixAt(index, this.dummy.matrix);
   }
 
-  pickFairLane(items, spawnZ) {
-    let occupiedMask = 0;
-    for (let j = 0; j < items.length; j++) {
-      const other = items[j];
-      if (!other.active) continue;
-      if (Math.abs(other.z - spawnZ) < 14.0) {
-        occupiedMask |= 1 << other.lane;
+  /**
+   * Deterministic/fair 3-lane wave allocator:
+   * - Never allows 3 obstacles to occupy all 3 lanes in the same wave or within `0.85 * stepZ`.
+   * - 2 out of 3 waves have 1 obstacle (2 open lanes); every 3rd wave has 2 obstacles (1 open lane).
+   * - Adjacent wave safe lanes always differ by at most 1 lane (`Math.abs(nextSafe - prevSafe) <= 1`)
+   *   so the player always has a smooth, reachable escape corridor.
+   */
+  assignNextWaveSlot(item, pool, limit, trackerKey, stepZ, firstZ = -52) {
+    const tracker = this.waveTrackers[trackerKey];
+
+    // Find current furthest active wave position among all other active items in the pool
+    let furthestZ = Infinity;
+    for (let j = 0; j < limit; j++) {
+      const other = pool[j];
+      if (other !== item && other.z < 500 && other.z < furthestZ) {
+        furthestZ = other.z;
       }
     }
-    const open = [];
+    const hasExistingWave = Number.isFinite(furthestZ);
+
+    // Helper: bitmask of lanes occupied within `windowZ` of `candidateZ`
+    const getNearbyLaneMask = (candidateZ, windowZ) => {
+      let mask = 0;
+      for (let j = 0; j < limit; j++) {
+        const other = pool[j];
+        if (other !== item && other.active && other.z < 500 && Math.abs(other.z - candidateZ) < windowZ) {
+          mask |= 1 << other.lane;
+        }
+      }
+      return mask;
+    };
+
+    // Can this item pair into the current furthest wave as a 2-obstacle gate (leaving 1 open lane)?
+    if (hasExistingWave && tracker.currentCount > 0 && tracker.currentCount < tracker.maxInWave) {
+      const pairWindowMask = getNearbyLaneMask(furthestZ, stepZ * 0.85);
+      let chosenLane = -1;
+      for (let l = 0; l < 3; l++) {
+        if (
+          l !== tracker.safeLane &&
+          !(tracker.occupiedMask & (1 << l)) &&
+          ((pairWindowMask | (1 << l)) !== 0b111)
+        ) {
+          chosenLane = l;
+          break;
+        }
+      }
+      if (chosenLane !== -1) {
+        item.lane = chosenLane;
+        item.x = LANES[chosenLane];
+        item.z = furthestZ;
+        item.active = true;
+        item.grazed = false;
+        item.hitCooldown = 0;
+        tracker.occupiedMask |= 1 << chosenLane;
+        tracker.currentCount += 1;
+        tracker.waveZ = furthestZ;
+        return;
+      }
+    }
+
+    // Start a new wave separated by `stepZ` behind `furthestZ`
+    tracker.waveIndex += 1;
+    const prevSafe = tracker.safeLane;
+
+    // Pick a reachable safe lane (within 1 lane step of prevSafe) and shift it so the player actively weaves
+    const reachableSafe = [];
     for (let l = 0; l < 3; l++) {
-      if (!(occupiedMask & (1 << l))) open.push(l);
+      if (Math.abs(l - prevSafe) <= 1 && l !== prevSafe) {
+        reachableSafe.push(l);
+      }
     }
-    if (open.length >= 2) {
-      return open[Math.floor(Math.random() * open.length)];
+    const nextSafe =
+      reachableSafe.length > 0
+        ? reachableSafe[tracker.waveIndex % reachableSafe.length]
+        : prevSafe;
+
+    // Place the primary obstacle in prevSafe (if available) to encourage weaving, otherwise any non-safe lane
+    let blockedLane = prevSafe !== nextSafe ? prevSafe : (nextSafe + 1) % 3;
+    if (blockedLane === nextSafe) {
+      blockedLane = (nextSafe + 2) % 3;
     }
-    for (let l = 0; l < 3; l++) {
-      if (occupiedMask & (1 << l)) return l;
+
+    const newWaveZ = hasExistingWave ? Math.min(firstZ, furthestZ) - stepZ : firstZ;
+    tracker.safeLane = nextSafe;
+    tracker.occupiedMask = 1 << blockedLane;
+    tracker.currentCount = 1;
+    // Every 3rd wave is a 2-lane gate (1 open escape lane); all other waves are 1-lane (2 open escape lanes)
+    tracker.maxInWave = tracker.waveIndex % 3 === 0 ? 2 : 1;
+    tracker.waveZ = newWaveZ;
+
+    item.lane = blockedLane;
+    item.x = LANES[blockedLane];
+    item.z = newWaveZ;
+    item.active = true;
+    item.grazed = false;
+    item.hitCooldown = 0;
+  }
+
+  layoutWavePool(trackerKey, pool, limit, firstZ, stepZ) {
+    const tracker = this.waveTrackers[trackerKey];
+    tracker.waveIndex = 0;
+    tracker.safeLane = 1;
+    tracker.occupiedMask = 0;
+    tracker.currentCount = 0;
+    tracker.maxInWave = 1;
+    tracker.waveZ = firstZ;
+
+    for (let i = 0; i < pool.length; i++) {
+      pool[i].z = 999;
+      pool[i].active = false;
     }
-    return Math.floor(Math.random() * 3);
+    for (let i = 0; i < limit; i++) {
+      this.assignNextWaveSlot(pool[i], pool, limit, trackerKey, stepZ, firstZ);
+    }
+  }
+
+  layoutHandStomps(firstZ = -58, stepZ = 44) {
+    for (let i = 0; i < MAX_HAND_STOMPS; i++) {
+      const h = this.handStomps[i];
+      h.isLeft = i % 2 === 0;
+      h.x = h.isLeft ? -1.5 : 1.5;
+      h.coveredLanes = h.isLeft ? [0, 1] : [1, 2];
+      h.exitLane = h.isLeft ? 2 : 0;
+      h.z = firstZ - i * stepZ;
+      h.active = true;
+      h.grazed = false;
+      h.hitCooldown = 0;
+    }
   }
 
   update(worldDt, cat, state, onHit, onPhase, lily = null, onLilyHit = null, onGraze = null) {
@@ -815,6 +898,10 @@ export class ObstacleSystem {
     // MODE A: STAGE 2 (10s-25.7s) & STAGE 3 OVERCLOCK (25.7s-38s) -> Sculpted Cars & Bikes
     // =========================================================================
     if (!state.worldCollapsed) {
+      if (this.activeMode !== 'vehicles') {
+        this.activeMode = 'vehicles';
+        this.layoutWavePool('vehicles', this.vehicles, this.vehicleLimit, -52, 30);
+      }
       this.carMesh.visible = true;
       this.bikeMesh.visible = true;
 
@@ -830,18 +917,14 @@ export class ObstacleSystem {
         this.bikeMat.emissiveIntensity = 0.25;
       }
 
+      const vehicleStepZ = Math.max(28, state.speed * 0.72);
       for (let i = 0; i < this.vehicleLimit; i++) {
         const v = this.vehicles[i];
         v.z += (state.speed + v.relSpeed) * worldDt;
         if (v.hitCooldown > 0) v.hitCooldown -= worldDt;
 
         if (v.z > 10) {
-          v.z = -150 - Math.random() * 50;
-          v.lane = this.pickFairLane(this.vehicles, v.z);
-          v.x = LANES[v.lane];
-          v.active = true;
-          v.grazed = false;
-          v.hitCooldown = 0;
+          this.assignNextWaveSlot(v, this.vehicles, this.vehicleLimit, 'vehicles', vehicleStepZ);
         }
 
         if (v.active && v.hitCooldown <= 0 && Math.abs(v.z) < 1.65 && cat.y < 1.05) {
@@ -902,26 +985,26 @@ export class ObstacleSystem {
     // MODE B: WORLD COLLAPSE (38s-62s) -> Sculpted Crag Land Slabs, Cars & Multi-Crown Trees
     // =========================================================================
     if (!state.titanMode && !state.stage2BurstActive && !state.blackRedPillarMode) {
+      if (this.activeMode !== 'debris') {
+        this.activeMode = 'debris';
+        this.layoutWavePool('debris', this.debris, this.debrisLimit, -54, 30);
+      }
       this.landMesh.visible = true;
       this.carMesh.visible = true;
       this.treeDebrisMesh.visible = true;
       this.carMat.emissive.set('#22e6ff');
       this.carMat.emissiveIntensity = 0.35;
 
+      const debrisStepZ = Math.max(29, state.speed * 0.68);
       for (let i = 0; i < this.debrisLimit; i++) {
         const d = this.debris[i];
-        d.z += state.speed * 1.05 * worldDt;
+        d.z += state.speed * 1.02 * worldDt;
         d.rx += d.spin * worldDt;
         d.ry += d.spin * 0.8 * worldDt;
         if (d.hitCooldown > 0) d.hitCooldown -= worldDt;
 
         if (d.z > 10) {
-          d.z = -145 - Math.random() * 50;
-          d.lane = this.pickFairLane(this.debris, d.z);
-          d.x = LANES[d.lane];
-          d.active = true;
-          d.grazed = false;
-          d.hitCooldown = 0;
+          this.assignNextWaveSlot(d, this.debris, this.debrisLimit, 'debris', debrisStepZ);
         }
 
         if (d.active && d.hitCooldown <= 0 && Math.abs(d.z) < 1.35 && cat.y < 1.25) {
@@ -973,6 +1056,10 @@ export class ObstacleSystem {
     // MODE C: STAGE 4 (62s-136s) -> Sculpted Synthwave Titans + 2-Lane Clawed Hand Stomps
     // =========================================================================
     if (state.titanMode) {
+      if (this.activeMode !== 'titans') {
+        this.activeMode = 'titans';
+        this.layoutHandStomps(-58, 44);
+      }
       this.titanGroup.visible = true;
       this.handMesh.visible = true;
       this.handZoneMesh.visible = true;
@@ -983,14 +1070,24 @@ export class ObstacleSystem {
         fig.position.y = -1.5 + Math.sin(state.runElapsed * 1.4 + tIdx * Math.PI) * 1.1;
       }
 
+      const handStepZ = Math.max(42, state.speed * 0.88);
       for (let i = 0; i < MAX_HAND_STOMPS; i++) {
         const h = this.handStomps[i];
         h.z += state.speed * worldDt;
         if (h.hitCooldown > 0) h.hitCooldown -= worldDt;
 
         if (h.z > 12) {
-          h.z = -185 - Math.random() * 25;
-          h.isLeft = !h.isLeft;
+          // Find the furthest active hand stomp and place this one strictly `handStepZ` behind it on the opposite side
+          let furthestHandZ = -50;
+          let furthestIsLeft = !h.isLeft;
+          for (let j = 0; j < MAX_HAND_STOMPS; j++) {
+            if (j !== i && this.handStomps[j].z < furthestHandZ) {
+              furthestHandZ = this.handStomps[j].z;
+              furthestIsLeft = this.handStomps[j].isLeft;
+            }
+          }
+          h.z = furthestHandZ - handStepZ;
+          h.isLeft = !furthestIsLeft;
           h.x = h.isLeft ? -1.5 : 1.5;
           h.coveredLanes = h.isLeft ? [0, 1] : [1, 2];
           h.exitLane = h.isLeft ? 2 : 0;
@@ -1047,6 +1144,10 @@ export class ObstacleSystem {
     // MODE D: 2ND OVERCLOCK (136s-142s) -> Slowed Yellow High-Energy Plasma Beams
     //         & POST-OVERCLOCK (142s+) -> Pitch-Black Void Beams w/ Red Fresnel Rim & Voltage!
     // =========================================================================
+    if (this.activeMode !== 'pillars') {
+      this.activeMode = 'pillars';
+      this.layoutWavePool('pillars', this.pillars, this.pillarLimit, -54, 34);
+    }
     this.pillarCoreMesh.visible = true;
     this.pillarOutlineMesh.visible = true;
     this.chargeRingMesh.visible = true;
@@ -1060,6 +1161,7 @@ export class ObstacleSystem {
     this.chargeRingMat.uniforms.uTime.value = beamClock;
     this.chargeRingMat.uniforms.uDarkMode.value = darkBeamMode;
 
+    const pillarStepZ = Math.max(32, state.speed * 0.62);
     for (let i = 0; i < this.pillarLimit; i++) {
       const p = this.pillars[i];
       p.z += state.speed * worldDt;
@@ -1067,12 +1169,7 @@ export class ObstacleSystem {
       if (p.hitCooldown > 0) p.hitCooldown -= worldDt;
 
       if (p.z > 10) {
-        p.z = -150 - Math.random() * 45;
-        p.lane = this.pickFairLane(this.pillars, p.z);
-        p.x = LANES[p.lane];
-        p.active = true;
-        p.grazed = false;
-        p.hitCooldown = 0;
+        this.assignNextWaveSlot(p, this.pillars, this.pillarLimit, 'pillars', pillarStepZ);
       }
 
       if (p.active && p.hitCooldown <= 0 && Math.abs(p.z) < 1.05 && cat.y < 3.0) {
