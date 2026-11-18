@@ -81,7 +81,8 @@ export class PowerupSystem {
   }
 
   update(worldDt, cat, state, onCollect) {
-    if (state.actIndex < 1 || state.actIndex >= 4 || state.runElapsed > 210) {
+    // Collectible track powerups unlock once TEAR IV hits (75s+) until final climax
+    if (state.tearCount < 4 || state.actIndex >= 4 || state.runElapsed > 210) {
       this.coreMesh.visible = false;
       this.ringMesh.visible = false;
       return;

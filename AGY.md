@@ -134,9 +134,7 @@ slipstream tracking, and obstacle avoidance drive velocity, distance, and
 high-speed intensity:
 
 -   `0s--26s`: Quiet opening (`Act 1`) -> Acceleration corridor (`Act 2`);
-    `Space` Temporal Burst stays locked until `26s`, while collectible
-    powerup orbs (`Velocity Surge`, `Aegis Shield`, `Temporal Cell`) begin
-    spawning along clear track lanes.
+    `Space` Temporal Burst stays locked until `26s`.
 -   `26s`: Overclock slow-motion animation + `Space` Temporal Burst
     unlocks (`Stage 1`).
 -   `38s`: First space-time fabric tear; electric charges emanate from
@@ -145,7 +143,9 @@ high-speed intensity:
 -   `62s`: Third space-time tear (`Dimensional Rift Pylon Gates`);
     environment shifts to a crisp teal-magenta overdrive palette and
     fair, lane-locked rift pylons with floor telegraph strips appear.
--   `75s`: Fourth space-time tear; hyperstorm escalation.
+-   `75s`: Fourth space-time tear; hyperstorm escalation — collectible
+    track powerup orbs (`Velocity Surge`, `Aegis Shield`, `Temporal Cell`)
+    unlock and spawn from Tear IV onward.
 -   `136s--142s`: **Stage 2 Temporal Burst** (distinct golden-crimson
     time-dilation surge) leading into the fifth space-time tear at `142s`.
 -   `142s--216s`: **TEAR V** — High-priority **`! RIVAL DETECTED !`**
@@ -159,11 +159,8 @@ high-speed intensity:
     lightning on Wiwi paired with emerald/crimson/black lightning and
     sparks on Lily, plus supersonic smeared afterimages. After `179s`,
     both cats are hindered by only 20% on obstacle hits and keep
-    gaining speed continuously while Voronoi screen-glass fractures
-    creep inward bit by bit across tears.
--   `216s`: Final dual leap into Act 5 (`The Laser Reveal`): both cats
-    **smash the cracked screen open** into scattering glass shards as
-    they breach into abrupt silence in the quiet living room. Clearing
+    gaining speed continuously.
+-   `216s`: Final dual leap into Act 5 (`The Laser Reveal`): clearing
     `>= 23,000 m` lets Wiwi beat Lily to the laser (`UNIVERSE DESTROYED.
     LASER ACQUIRED.`); falling short lets Lily steal it instead.
 

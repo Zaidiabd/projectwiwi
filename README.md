@@ -20,16 +20,16 @@ An interactive 2.5D browser speed-running experience built with Three.js (WebGL 
 
 ## Timed Sequence (`216s` Audio-Synced Run)
 
-- `0s – 26s`: Quiet opening into acceleration corridor (Temporal Burst locked; collectible track powerups spawn from Stage II onward).
+- `0s – 26s`: Quiet opening into acceleration corridor (Temporal Burst locked).
 - `26s`: Overclock slow-motion beat + `Space` Temporal Burst unlocks.
 - `38s`: First space-time fabric tear; electric charges emanate from Wiwi's body.
 - `50s`: Second space-time tear; speed and electric intensity escalate.
-- `62s`: Third space-time tear; **Dimensional Rift Pylon Gates** (fair, lane-locked obstacles with glowing ground telegraph strips) replace the opening hazard cadence alongside collectible Velocity Surge, Aegis Shield, and Temporal Cell powerups.
-- `75s`: Fourth space-time tear; hyperstorm escalation.
+- `62s`: Third space-time tear; **Dimensional Rift Pylon Gates** (fair, lane-locked obstacles with glowing ground telegraph strips) activate.
+- `75s`: Fourth space-time tear; hyperstorm escalation — **collectible track powerups** (`Velocity Surge`, `Aegis Shield`, `Temporal Cell`) unlock and spawn from TEAR IV onward.
 - `136s – 142s`: **Stage II Temporal Burst** (golden-crimson time-dilation overdrive) leading into Tear V (`142s`).
 - `142s – 216s`: **TEAR V** — Tactical **`! RIVAL DETECTED !`** warning alert triggers as big long-haired black-and-white cat **Lily** joins the chase alongside Wiwi (triggering Wiwi's pulsing `💢` anger symbol) in a race to clear the `23,000 m` threshold.
-- `179s`: **Dual Overdrive Powerup** halfway through TEAR V — both Wiwi and Lily erupt into synchronized Overdrive (electric cyan/crimson plasma rim highlights, swirling energy auras & orbiting halo rings on both cats, thick red/black/blue lightning on Wiwi paired with emerald/crimson/black lightning on Lily, supersonic smeared afterimages). Both cats continue gaining speed while being hindered by only 20% on obstacle impacts, and screen glass cracks creep inward bit by bit across tears until climax.
-- `216s`: Both cats leap into the final Act V climax, completely **smashing the cracked screen open** into flying glass shards that scatter to reveal abrupt silence inside a quiet living room; if `distance >= 23,000 m`, Wiwi catches the laser while Lily is shocked (`UNIVERSE DESTROYED. LASER ACQUIRED.`); otherwise Lily steals it while Wiwi belly-flops (`UNIVERSE DESTROYED. LILY STOLE THE LASER.`).
+- `179s`: **Dual Overdrive Powerup** halfway through TEAR V — both Wiwi and Lily erupt into synchronized Overdrive (electric cyan/crimson plasma rim highlights, swirling energy auras & orbiting halo rings on both cats, thick red/black/blue lightning on Wiwi paired with emerald/crimson/black lightning on Lily, supersonic smeared afterimages). Both cats continue gaining speed while hindered by only 20% on obstacle impacts.
+- `216s`: Both cats leap through the final rift into abrupt silence inside a quiet living room; if `distance >= 23,000 m`, Wiwi catches the laser while Lily is shocked (`UNIVERSE DESTROYED. LASER ACQUIRED.`); otherwise Lily steals it while Wiwi belly-flops (`UNIVERSE DESTROYED. LILY STOLE THE LASER.`).
 
 ## Running Locally
 

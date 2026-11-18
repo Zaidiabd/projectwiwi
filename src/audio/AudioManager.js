@@ -191,10 +191,6 @@ export class AudioManager {
     if (this.procedural) this.procedural.playPowerupPickup();
   }
 
-  playScreenSmash() {
-    if (this.procedural) this.procedural.playScreenSmash();
-  }
-
   getTrackTime() {
     if (!this.hasMusicLoaded && !this.musicActive) return null;
     return Number.isFinite(this.audioEl.currentTime) ? this.audioEl.currentTime : null;
