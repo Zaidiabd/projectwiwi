@@ -83,6 +83,17 @@
       <!-- Active Collectible Powerup Buff Indicator -->
       <div id="powerup-buff-pill" class="powerup-buff-pill hidden" aria-hidden="true"></div>
 
+      <!-- Live TEAR V Rivalry Pace Indicator -->
+      <div id="rivalry-widget" class="rivalry-widget hidden" aria-hidden="true">
+        <div class="rivalry-head">
+          <span class="rivalry-tag">RIVALRY PACE // WIWI vs LILY</span>
+          <strong id="rivalry-delta" class="rivalry-delta">AHEAD +0 m</strong>
+        </div>
+        <div class="rivalry-bar">
+          <div id="rivalry-fill" class="rivalry-fill"></div>
+        </div>
+      </div>
+
       <!-- Bottom Telemetry -->
       <div class="hud-bottom-center">
         <div id="speedometer-card" class="telemetry-panel">
@@ -242,6 +253,10 @@
           <div class="end-stat">
             <span>BEST DISTANCE</span>
             <strong id="end-best-time">0 m</strong>
+          </div>
+          <div class="end-stat">
+            <span>NEAR-MISS GRAZES</span>
+            <strong id="end-grazes">0</strong>
           </div>
         </div>
         <div id="end-new-best" class="new-best-badge hidden">NEW PERSONAL RECORD</div>

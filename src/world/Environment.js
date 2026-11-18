@@ -15,6 +15,9 @@ const FLOOR_FRAGMENT = /* glsl */ `
   uniform vec3 uBaseColor;
   uniform vec3 uLineColor;
   uniform float uPeaceful;
+  uniform float uLaserX;
+  uniform float uAlignment;
+  uniform float uBeat;
 
   varying vec2 vWorldUv;
 
@@ -22,26 +25,42 @@ const FLOOR_FRAGMENT = /* glsl */ `
     vec2 uv = vWorldUv;
     uv.y -= uOffset;
 
-    // Anti-aliased grid lines
-    vec2 grid = abs(fract(uv * vec2(0.5, 0.25) - 0.5) - 0.5) / fwidth(uv * vec2(0.5, 0.25));
-    float line = 1.0 - min(min(grid.x, grid.y), 1.0);
+    // Primary anti-aliased grid + fine sub-grid harmonic
+    vec2 gMain = abs(fract(uv * vec2(0.5, 0.25) - 0.5) - 0.5) / fwidth(uv * vec2(0.5, 0.25));
+    float mainLine = 1.0 - min(min(gMain.x, gMain.y), 1.0);
 
-    // Center slipstream track accent
-    float centerTrack = smoothstep(5.8, 5.4, abs(vWorldUv.x));
-    float edgeGlow = smoothstep(0.25, 0.0, abs(abs(vWorldUv.x) - 5.6));
+    vec2 gSub = abs(fract(uv * vec2(1.5, 0.75) - 0.5) - 0.5) / fwidth(uv * vec2(1.5, 0.75));
+    float subLine = (1.0 - min(min(gSub.x, gSub.y), 1.0)) * 0.26;
 
-    // Distance horizon fade
-    float distFade = exp(-length(vWorldUv) * 0.018);
+    // Active runway lane mask & glowing outer boundary rails with scrolling chevrons
+    float centerTrack = smoothstep(5.9, 5.3, abs(vWorldUv.x));
+    float railDist = abs(abs(vWorldUv.x) - 5.55);
+    float edgeGlow = smoothstep(0.28, 0.0, railDist);
+    float chevron = 0.65 + 0.35 * sin(uv.y * 1.4);
 
-    vec3 col = mix(uBaseColor, uLineColor, line * uGridStrength * centerTrack);
-    col += uLineColor * edgeGlow * 0.35 * uGridStrength;
+    // Dynamic laser slipstream projection along the runway
+    float slipDist = abs(vWorldUv.x - uLaserX);
+    float slipWake = exp(-slipDist * slipDist * 1.8) * smoothstep(2.0, -9.0, vWorldUv.y) * smoothstep(-45.0, -8.0, vWorldUv.y);
+    vec3 slipColor = mix(vec3(1.0, 0.16, 0.30), vec3(0.13, 0.90, 1.0), uAlignment);
+
+    // Distance horizon attenuation
+    float distFade = exp(-length(vWorldUv) * 0.0175);
+
+    float combinedGrid = (mainLine + subLine) * (1.0 + uBeat * 0.28);
+    vec3 col = mix(uBaseColor, uLineColor, clamp(combinedGrid * uGridStrength * centerTrack, 0.0, 1.0));
+    col += uLineColor * edgeGlow * chevron * (0.45 + uBeat * 0.35) * uGridStrength;
+    col += slipColor * slipWake * (0.24 + uAlignment * 0.32) * (1.0 - uPeaceful);
     col *= mix(distFade, 1.0, uPeaceful);
 
-    // Peaceful warm floor tile hint in Act 5
+    // Peaceful warm oak floor in Act 5 living room
     if (uPeaceful > 0.01) {
-      float plank = smoothstep(0.06, 0.0, abs(fract(vWorldUv.x * 0.65) - 0.5));
-      vec3 roomCol = mix(vec3(0.14, 0.15, 0.18), vec3(0.18, 0.19, 0.23), plank);
-      col = mix(col, roomCol * exp(-length(vWorldUv) * 0.045), uPeaceful);
+      float plankX = abs(fract(vWorldUv.x * 0.75) - 0.5);
+      float plankZ = abs(fract(vWorldUv.y * 0.18) - 0.5);
+      float seam = smoothstep(0.04, 0.0, min(plankX, plankZ * 2.5));
+      float grain = fract(sin(floor(vWorldUv.x * 0.75) * 37.1 + floor(vWorldUv.y * 0.18) * 19.7) * 437.5);
+      vec3 woodBase = mix(vec3(0.15, 0.16, 0.20), vec3(0.20, 0.21, 0.26), grain * 0.55);
+      vec3 roomCol = mix(woodBase, vec3(0.09, 0.10, 0.13), seam * 0.65);
+      col = mix(col, roomCol * exp(-length(vWorldUv) * 0.042), uPeaceful);
     }
 
     gl_FragColor = vec4(col, 1.0);
@@ -97,28 +116,36 @@ const SKY_FRAGMENT = /* glsl */ `
 
   void main() {
     float h = clamp(vDir.y, 0.0, 1.0);
-    vec3 col = mix(uSkyHorizon, uSkyTop, pow(h, 0.65));
+    vec3 col = mix(uSkyHorizon, uSkyTop, pow(h, 0.62));
 
-    // Swirling cosmic nebula band across upper sky
-    vec2 uv = vDir.xz / (h + 0.35);
+    // Swirling multi-octave cosmic nebula band + aurora curtain across upper sky
+    vec2 uv = vDir.xz / (h + 0.32);
     float n1 = noise(uv * 1.4 + vec2(uTime * 0.06, -uTime * 0.12));
     float n2 = noise(uv * 3.1 - vec2(uTime * 0.09, uTime * 0.05));
-    float neb = smoothstep(0.45, 0.92, n1 * 0.65 + n2 * 0.35);
-    col += uNebulaColor * neb * uNebulaStrength * smoothstep(0.02, 0.4, h);
+    float aurora = sin(vDir.x * 7.5 + uTime * 0.8 + n1 * 3.2) * 0.5 + 0.5;
+    float neb = smoothstep(0.42, 0.90, n1 * 0.62 + n2 * 0.38);
+    col += uNebulaColor * (neb + aurora * 0.24 * smoothstep(0.08, 0.32, h)) * uNebulaStrength * smoothstep(0.02, 0.42, h);
 
-    // Subtle crisp distant starfield
-    float star = step(0.9965, hash(floor(vDir.xz * 220.0 + floor(vDir.y * 120.0))));
-    col += vec3(0.75, 0.9, 1.0) * star * smoothstep(0.05, 0.3, h) * 0.65;
+    // Crisp dual-layer distant starfield
+    float star1 = step(0.9965, hash(floor(vDir.xz * 220.0 + floor(vDir.y * 120.0))));
+    float star2 = step(0.9982, hash(floor(vDir.xz * 340.0 - floor(vDir.y * 170.0))));
+    col += vec3(0.78, 0.92, 1.0) * (star1 * 0.65 + star2 * 1.1) * smoothstep(0.04, 0.28, h);
 
     gl_FragColor = vec4(col, 1.0);
   }
 `;
+
+const SLIPSTREAM_SEGS = 14;
 
 export class Environment {
   constructor(scene) {
     this.scene = scene;
     this.scene.background = new THREE.Color('#05070d');
     this.scene.fog = new THREE.FogExp2('#05070d', 0.016);
+
+    // Pre-allocated scratch colors to guarantee zero per-frame GC allocations
+    this.scratchBg = new THREE.Color();
+    this.scratchLine = new THREE.Color();
 
     // Lighting
     this.hemiLight = new THREE.HemisphereLight('#5c85b8', '#090b12', 0.85);
@@ -156,7 +183,10 @@ export class Environment {
         uGridStrength: { value: 0.45 },
         uBaseColor: { value: new THREE.Color('#060912') },
         uLineColor: { value: new THREE.Color('#22e6ff') },
-        uPeaceful: { value: 0.0 }
+        uPeaceful: { value: 0.0 },
+        uLaserX: { value: 0.0 },
+        uAlignment: { value: 0.0 },
+        uBeat: { value: 0.0 }
       },
       vertexShader: FLOOR_VERTEX,
       fragmentShader: FLOOR_FRAGMENT
@@ -181,7 +211,7 @@ export class Environment {
     this.laserGroup.add(this.laserCore);
 
     this.laserGlowTex = createGlowDiscTexture('rgba(255,255,255,0.95)', 'rgba(255,42,75,0.75)');
-    const haloGeom = new THREE.PlaneGeometry(1.15, 1.15);
+    const haloGeom = new THREE.PlaneGeometry(1.18, 1.18);
     haloGeom.rotateX(-Math.PI / 2);
     this.laserHaloMat = new THREE.MeshBasicMaterial({
       map: this.laserGlowTex,
@@ -202,18 +232,29 @@ export class Environment {
     this.peacefulLight.position.set(2.5, 7.5, 4);
     this.scene.add(this.peacefulLight);
 
-    // Slipstream guidance trail connecting the laser dot back toward Wiwi's lane
-    this.slipstreamPositions = new Float32Array(2 * 3);
+    // True 3D tapered slipstream ribbon connecting the laser dot back toward Wiwi's lane
+    const vertCount = (SLIPSTREAM_SEGS + 1) * 2;
+    this.slipstreamPositions = new Float32Array(vertCount * 3);
     const slipGeom = new THREE.BufferGeometry();
     slipGeom.setAttribute('position', new THREE.BufferAttribute(this.slipstreamPositions, 3));
-    this.slipstreamMat = new THREE.LineBasicMaterial({
+    const slipIndices = [];
+    for (let s = 0; s < SLIPSTREAM_SEGS; s++) {
+      const a = s * 2;
+      const b = a + 1;
+      const c = a + 2;
+      const d = a + 3;
+      slipIndices.push(a, b, c, b, d, c);
+    }
+    slipGeom.setIndex(slipIndices);
+    this.slipstreamMat = new THREE.MeshBasicMaterial({
       color: '#ff2a4b',
       transparent: true,
-      opacity: 0.25,
+      opacity: 0.22,
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      depthWrite: false,
+      side: THREE.DoubleSide
     });
-    this.slipstreamLine = new THREE.Line(slipGeom, this.slipstreamMat);
+    this.slipstreamLine = new THREE.Mesh(slipGeom, this.slipstreamMat);
     this.slipstreamLine.frustumCulled = false;
     this.scene.add(this.slipstreamLine);
 
@@ -279,7 +320,10 @@ export class Environment {
     }
 
     // Warm standing floor lamp on right + dust motes
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3.0, 8), new THREE.MeshStandardMaterial({ color: '#475569', metalness: 0.6 }));
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.05, 3.0, 8),
+      new THREE.MeshStandardMaterial({ color: '#475569', metalness: 0.6 })
+    );
     pole.position.set(3.2, 1.5, -3.5);
     this.roomGroup.add(pole);
 
@@ -331,12 +375,14 @@ export class Environment {
     this.laserX = 0;
     this.laserZ = -7.5;
     this.laserTime = 0;
+    this.prevLaserX = 0;
     this.reset();
   }
 
   reset() {
     this.floorScroll = 0;
     this.laserX = 0;
+    this.prevLaserX = 0;
     this.laserZ = -7.2;
     this.laserTime = 0;
     this.laserGroup.visible = true;
@@ -354,19 +400,25 @@ export class Environment {
     this.floorMat.uniforms.uBaseColor.value.set('#060912');
     this.floorMat.uniforms.uLineColor.value.set('#22e6ff');
     this.floorMat.uniforms.uPeaceful.value = 0.0;
+    this.floorMat.uniforms.uLaserX.value = 0.0;
+    this.floorMat.uniforms.uAlignment.value = 0.0;
+    this.floorMat.uniforms.uBeat.value = 0.0;
 
     this.peacefulLight.intensity = 0;
     this.hemiLight.intensity = 0.85;
   }
 
-  update(worldDt, realDt, state, beatEnergy = 0) {
+  update(worldDt, realDt, state, beatEnergy = 0, catX = 0) {
     this.floorScroll += state.speed * worldDt;
     this.floorMat.uniforms.uOffset.value = this.floorScroll;
 
     // Laser weaving target ahead of the cat
     this.laserTime += worldDt * (0.9 + state.actIndex * 0.22);
     const weaveAmp = state.actIndex === 0 ? 0.55 : Math.min(3.6, 1.4 + state.actIndex * 0.85);
-    const targetLaserX = Math.sin(this.laserTime * 1.15) * weaveAmp * 0.7 + Math.sin(this.laserTime * 2.1) * weaveAmp * 0.3;
+    const targetLaserX =
+      Math.sin(this.laserTime * 1.15) * weaveAmp * 0.7 +
+      Math.sin(this.laserTime * 2.1) * weaveAmp * 0.3;
+    this.prevLaserX = this.laserX;
     this.laserX += (targetLaserX - this.laserX) * (1 - Math.exp(-3.5 * worldDt));
 
     // Laser stays tantalizingly just out of reach until Act 5
@@ -376,25 +428,39 @@ export class Environment {
     this.laserGroup.visible = state.runElapsed < 214.0;
     this.laserGroup.position.set(this.laserX, 0, this.laserZ);
 
-    // Slipstream guidance ribbon connecting laser dot to Wiwi's track lane
+    this.floorMat.uniforms.uLaserX.value = this.laserX;
+    this.floorMat.uniforms.uAlignment.value = state.slipstreamAlignment;
+    this.floorMat.uniforms.uBeat.value = beatEnergy;
+
+    // Update curved 3D volumetric slipstream ribbon connecting laser dot to Wiwi's lane
     this.slipstreamLine.visible = this.laserGroup.visible && state.phase === 'playing';
     if (this.slipstreamLine.visible) {
-      this.slipstreamPositions[0] = this.laserX;
-      this.slipstreamPositions[1] = 0.03;
-      this.slipstreamPositions[2] = this.laserZ;
-      this.slipstreamPositions[3] = this.laserX;
-      this.slipstreamPositions[4] = 0.03;
-      this.slipstreamPositions[5] = 0.5;
+      const pos = this.slipstreamPositions;
+      const baseHalfW = 0.06 + state.slipstreamAlignment * 0.14;
+      for (let s = 0; s <= SLIPSTREAM_SEGS; s++) {
+        const u = s / SLIPSTREAM_SEGS;
+        const smoothU = u * u * (3 - 2 * u);
+        const cx = THREE.MathUtils.lerp(this.laserX, THREE.MathUtils.lerp(this.laserX, catX, 0.65), smoothU);
+        const cz = THREE.MathUtils.lerp(this.laserZ, 0.35, u);
+        const w = baseHalfW * (0.45 + Math.sin(u * Math.PI) * 0.85);
+        const idx = s * 6;
+        pos[idx] = cx - w;
+        pos[idx + 1] = 0.026;
+        pos[idx + 2] = cz;
+        pos[idx + 3] = cx + w;
+        pos[idx + 4] = 0.026;
+        pos[idx + 5] = cz;
+      }
       this.slipstreamLine.geometry.attributes.position.needsUpdate = true;
-      this.slipstreamMat.opacity = 0.14 + state.slipstreamAlignment * 0.45;
-      this.slipstreamMat.color.set(state.slipstreamAlignment > 0.6 ? '#22e6ff' : '#ff2a4b');
+      this.slipstreamMat.opacity = 0.16 + state.slipstreamAlignment * 0.42 + beatEnergy * 0.12;
+      this.slipstreamMat.color.set(state.slipstreamAlignment > 0.58 ? '#22e6ff' : '#ff2a4b');
     }
 
     const pulse = 1.0 + Math.sin(this.laserTime * 6) * 0.14 + beatEnergy * 0.28;
     this.laserHalo.scale.setScalar(pulse);
     this.laserLight.intensity = 2.1 + beatEnergy * 1.4;
 
-    // Palette evolution by exact timed stage & vibe
+    // Palette evolution by exact timed stage & vibe (zero per-frame allocations)
     const smooth = 1 - Math.exp(-3.5 * realDt);
     let targetBg = '#05070d';
     let targetLine = '#22e6ff';
@@ -402,66 +468,61 @@ export class Environment {
     let targetFog = 0.014;
 
     if (state.stage2BurstActive) {
-      // 136s-142s: Stage 2 Golden-Amber Temporal Burst
       targetBg = '#140c03';
       targetLine = '#ffbe3b';
       targetGrid = 0.65;
       targetFog = 0.011;
     } else if (state.tearCount >= 5) {
-      // 142s-216s: Final collapse hyper-crimson void
       targetBg = '#16030a';
-      targetLine = '#ff2a4b';
-      targetGrid = 0.62 + beatEnergy * 0.25;
+      targetLine = state.overdriveMode ? '#38f3ff' : '#ff2a4b';
+      targetGrid = 0.64 + beatEnergy * 0.25;
       targetFog = 0.012;
     } else if (state.tearCount >= 4) {
-      // 75s-136s: Hyperstorm violet-crimson rupture
       targetBg = '#10031a';
       targetLine = '#e879f9';
       targetGrid = 0.56 + beatEnergy * 0.22;
       targetFog = 0.011;
     } else if (state.riftGateMode) {
-      // 62s-75s: Dimensional Rift Pylon Gates (crisp teal + neon magenta lanes)
       targetBg = '#04191e';
       targetLine = '#2dd4bf';
       targetGrid = 0.64 + beatEnergy * 0.24;
       targetFog = 0.015;
     } else if (state.tearCount >= 1) {
-      // 38s-62s: Tear 1 & Tear 2 dimensional fracture
       targetBg = '#080416';
       targetLine = '#a855f7';
       targetGrid = 0.45 + beatEnergy * 0.2;
       targetFog = 0.011;
     } else if (state.actIndex === 2) {
-      // 26s-38s: Overclock deep black void
       targetBg = '#020308';
       targetLine = '#7c3aed';
       targetGrid = 0.24;
       targetFog = 0.01;
     } else if (state.actIndex === 1) {
-      // 10s-26s: Acceleration corridor
       targetBg = '#050914';
       targetLine = '#22e6ff';
       targetGrid = 0.58;
       targetFog = 0.013;
     } else {
-      // 0s-10s: Quiet minimal opening
       targetBg = '#05070d';
       targetLine = '#22e6ff';
       targetGrid = 0.20 + Math.min(0.25, state.runElapsed * 0.025);
       targetFog = 0.015;
     }
 
-    this.scene.background.lerp(new THREE.Color(targetBg), smooth);
+    this.scratchBg.set(targetBg);
+    this.scratchLine.set(targetLine);
+    this.scene.background.lerp(this.scratchBg, smooth);
     this.scene.fog.color.copy(this.scene.background);
     this.scene.fog.density += (targetFog - this.scene.fog.density) * smooth;
-    this.floorMat.uniforms.uLineColor.value.lerp(new THREE.Color(targetLine), smooth);
-    this.floorMat.uniforms.uGridStrength.value += (targetGrid - this.floorMat.uniforms.uGridStrength.value) * smooth;
+    this.floorMat.uniforms.uLineColor.value.lerp(this.scratchLine, smooth);
+    this.floorMat.uniforms.uGridStrength.value +=
+      (targetGrid - this.floorMat.uniforms.uGridStrength.value) * smooth;
 
     // Sky dome nebula & horizon evolution
     this.skyMesh.visible = true;
     this.skyMat.uniforms.uTime.value += worldDt * (0.8 + state.normalizedSpeed * 1.8);
     this.skyMat.uniforms.uSkyHorizon.value.copy(this.scene.background);
-    this.skyMat.uniforms.uNebulaColor.value.lerp(new THREE.Color(targetLine), smooth);
+    this.skyMat.uniforms.uNebulaColor.value.lerp(this.scratchLine, smooth);
     this.skyMat.uniforms.uNebulaStrength.value =
       0.18 + state.tearCount * 0.1 + (state.overdriveMode ? 0.25 : 0) + beatEnergy * 0.15;
   }
@@ -483,7 +544,8 @@ export class Environment {
     this.floorMat.uniforms.uPeaceful.value += (1 - this.floorMat.uniforms.uPeaceful.value) * smooth;
     this.floorMat.uniforms.uGridStrength.value = 0;
 
-    this.scene.background.lerp(new THREE.Color('#131720'), smooth);
+    this.scratchBg.set('#131720');
+    this.scene.background.lerp(this.scratchBg, smooth);
     this.scene.fog.color.copy(this.scene.background);
     this.scene.fog.density = 0.032;
 

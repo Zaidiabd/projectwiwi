@@ -82,11 +82,15 @@ export class GameState {
     this.riftGateMode = false; // lane-locked Dimensional Rift Pylon gates starting at 62s
     this.overdriveMode = false; // Dual Overdrive powerup on both Wiwi & Lily halfway through TEAR V (179s+)
 
-    // Collectible pickup powerup buffs
+    // Collectible pickup powerup buffs & skill telemetry
     this.shieldActive = false;
     this.shieldTimer = 0;
     this.surgeTimer = 0;
     this.powerupsCollected = 0;
+    this.grazeCount = 0;
+    this.grazeStreak = 0;
+    this.grazeTimer = 0;
+    this.rivalryDelta = 0; // +meters ahead of 23,000m pace, -meters behind
 
     this.slipstreamAlignment = 0;
     this.realityIntegrity = 1.0;
@@ -155,6 +159,8 @@ export class GameState {
       this.burstStage = 2;
     }
     this.overdriveMode = t >= TIMELINE.overdrivePowerup;
+    const expectedDist = this.progress * TARGET_CATCH_DISTANCE;
+    this.rivalryDelta = this.distance - expectedDist;
 
     return {
       stageChanged: nextStage !== prevStage,

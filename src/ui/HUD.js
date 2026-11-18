@@ -31,6 +31,9 @@ export class HUD {
     this.rivalAlertTimer = 0;
 
     this.powerupBuffEl = document.getElementById('powerup-buff-pill');
+    this.rivalryWidgetEl = document.getElementById('rivalry-widget');
+    this.rivalryDeltaEl = document.getElementById('rivalry-delta');
+    this.rivalryFillEl = document.getElementById('rivalry-fill');
 
     this.tempSyncTimerEl = document.getElementById('temp-sync-timer');
     this.syncSecEl = document.getElementById('hud-sync-sec');
@@ -79,6 +82,7 @@ export class HUD {
       if (this.rivalAlertEl) this.rivalAlertEl.classList.add('hidden');
       this.rivalAlertTimer = 0;
       if (this.powerupBuffEl) this.powerupBuffEl.classList.add('hidden');
+      if (this.rivalryWidgetEl) this.rivalryWidgetEl.classList.add('hidden');
     }
   }
 
@@ -205,6 +209,9 @@ export class HUD {
 
     if (this.powerupBuffEl) {
       const buffs = [];
+      if (state.grazeTimer > 0 && state.grazeStreak > 0) {
+        buffs.push(`GRAZE x${state.grazeStreak}`);
+      }
       if (state.shieldActive && state.shieldTimer > 0) {
         buffs.push(`SHIELD ${state.shieldTimer.toFixed(1)}s`);
       }
@@ -216,10 +223,27 @@ export class HUD {
       }
       if (buffs.length > 0 && state.phase === 'playing') {
         this.powerupBuffEl.textContent = buffs.join('  •  ');
-        this.powerupBuffEl.style.borderColor = state.shieldActive ? '#34d399' : state.overdriveMode ? '#ff2a4b' : '#22e6ff';
+        this.powerupBuffEl.style.borderColor = state.shieldActive
+          ? '#34d399'
+          : state.overdriveMode
+            ? '#ff2a4b'
+            : '#22e6ff';
         this.powerupBuffEl.classList.remove('hidden');
       } else {
         this.powerupBuffEl.classList.add('hidden');
+      }
+    }
+
+    if (this.rivalryWidgetEl) {
+      const showRivalry = state.phase === 'playing' && state.tearCount >= 5;
+      this.rivalryWidgetEl.classList.toggle('hidden', !showRivalry);
+      if (showRivalry) {
+        const delta = Math.round(state.rivalryDelta);
+        const ahead = delta >= 0;
+        this.rivalryDeltaEl.textContent = ahead ? `WIWI +${delta} m` : `LILY +${Math.abs(delta)} m`;
+        this.rivalryDeltaEl.style.color = ahead ? '#22e6ff' : '#ff2a4b';
+        const pct = Math.max(8, Math.min(92, 50 + (delta / 900) * 42));
+        this.rivalryFillEl.style.width = `${pct.toFixed(1)}%`;
       }
     }
 

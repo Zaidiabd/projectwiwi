@@ -259,9 +259,19 @@ export class Game {
 
   tryTriggerBurst() {
     if (this.state.phase !== 'playing') return;
-    // Space Temporal Burst is locked before 26 seconds
-    if (!this.state.burstUnlocked) return;
-    if (this.state.burstActive || this.state.stage2BurstActive || this.state.burstCharge < 0.35) return;
+    // If Temporal Burst is locked (< 26s) or recharging (< 35%), Space performs an agile Cat Vault Hop!
+    if (
+      !this.state.burstUnlocked ||
+      this.state.burstActive ||
+      this.state.stage2BurstActive ||
+      this.state.burstCharge < 0.35
+    ) {
+      if (this.cat.isGrounded) {
+        this.cat.triggerLeap(8.8);
+        this.audio.playJump();
+      }
+      return;
+    }
     this.state.burstActive = true;
     this.state.burstTimer = 2.4 * this.state.burstCharge;
     this.state.burstCharge = 0;
@@ -451,6 +461,12 @@ export class Game {
       if (this.state.surgeTimer > 0) {
         this.state.surgeTimer = Math.max(0, this.state.surgeTimer - realDt);
       }
+      if (this.state.grazeTimer > 0) {
+        this.state.grazeTimer = Math.max(0, this.state.grazeTimer - realDt);
+        if (this.state.grazeTimer === 0) {
+          this.state.grazeStreak = 0;
+        }
+      }
 
       const aiInput = this.autopilot.enabled
         ? this.autopilot.computeInput(
@@ -544,7 +560,7 @@ export class Game {
         );
 
         this.lily.updateChase(this.time.playerDt, this.cat, this.state, this.environment.laserX);
-        this.environment.update(this.time.worldDt, realDt, this.state, beatEnergy);
+        this.environment.update(this.time.worldDt, realDt, this.state, beatEnergy, this.cat.x);
         this.corridor.update(this.time.worldDt, this.state.speed, this.state.actIndex, this.state.runElapsed, beatEnergy);
         this.voidWorld.update(this.time.worldDt, this.state);
         this.riftWorld.update(this.time.worldDt, this.state, beatEnergy);
@@ -553,6 +569,8 @@ export class Game {
           this.cat,
           this.state,
           () => {
+            this.state.grazeStreak = 0;
+            this.state.grazeTimer = 0;
             this.flashValue = 0.16;
             this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0, '#ff2a4b', 14);
             this.audio.playImpact();
@@ -575,6 +593,19 @@ export class Game {
           this.lily,
           (lx, lz) => {
             this.speedEffects.spawnImpactBurst(lx, 0.6, lz, '#fb7185', 10);
+          },
+          () => {
+            // Near-miss Graze bonus!
+            this.state.grazeCount++;
+            this.state.grazeStreak++;
+            this.state.grazeTimer = 2.8;
+            this.state.distance += 42 + Math.min(80, this.state.grazeStreak * 12);
+            this.state.boostEnergy = Math.min(1, this.state.boostEnergy + 0.09);
+            if (this.state.burstUnlocked) {
+              this.state.burstCharge = Math.min(1, this.state.burstCharge + 0.06);
+            }
+            this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y + 0.42, 0.08, '#22e6ff', 7);
+            this.audio.playGraze(this.state.grazeStreak);
           }
         );
         this.powerups.update(this.time.worldDt, this.cat, this.state, (spec, px, pz) => {

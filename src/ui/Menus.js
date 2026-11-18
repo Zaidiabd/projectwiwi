@@ -16,6 +16,7 @@ export class Menus {
     this.endTimeEl = document.getElementById('end-time');
     this.endPeakSpeedEl = document.getElementById('end-peak-speed');
     this.endBestTimeEl = document.getElementById('end-best-time');
+    this.endGrazesEl = document.getElementById('end-grazes');
     this.endNewBestBadge = document.getElementById('end-new-best');
     this.endSplitsEl = document.getElementById('end-splits');
 
@@ -109,6 +110,9 @@ export class Menus {
     this.endTimeEl.textContent = `${Math.round(state.distance)} m`;
     this.endPeakSpeedEl.textContent = `${state.peakSpeed.toFixed(1)} m/s`;
     this.endBestTimeEl.textContent = state.bestDistance ? `${Math.round(state.bestDistance)} m` : `${Math.round(state.distance)} m`;
+    if (this.endGrazesEl) {
+      this.endGrazesEl.textContent = `${state.grazeCount}`;
+    }
     this.endNewBestBadge.classList.toggle('hidden', !state.isNewBest);
 
     this.endSplitsEl.innerHTML = '';

@@ -849,12 +849,14 @@ GitHub Pages-ready implementation deployed at
     (`AutopilotAI.js`).
 -   **3D worlds, effects & post-processing:** `InstancedMesh` corridor,
     speed void, floating rift shards + late-run cosmic warp rings,
-    standard shards + lane-locked Dimensional Rift Pylon gates +
-    collectible powerup orbs, glowing slipstream ribbon, Act 5
+    standard shards with grounded hazard rings + lane-locked Dimensional
+    Rift Pylon gates + near-miss Graze streak system + collectible powerup
+    orbs (TEAR IV+), curved 3D volumetric slipstream ribbon, Act 5
     peaceful living room props, pooled afterimages, pooled 3D lightning +
     cat body charges, custom GLSL volumetric rift (`RiftEffect.js`),
-    stage announcement banners, and single-pass `CompositeShader` +
-    half-res bloom (`Low`/`Medium`/`High` tiers).
+    stage announcement banners + TEAR V Rivalry Pace widget, and
+    single-pass `CompositeShader` + half-res bloom (`Low`/`Medium`/`High`
+    tiers) with zero per-frame GC allocations.
 -   **Audio & BeatSync:** Streams `assets/Screen_Recording_20261118_044500_YouTube-mc.m4a`
     with drift-locked `getSyncedTrackTime()`, `AnalyserNode` beat
     reactivity (`BeatSync.js`), custom file upload, and synthesized

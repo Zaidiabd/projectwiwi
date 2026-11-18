@@ -269,4 +269,35 @@ export class ProceduralAudio {
       osc.stop(t + 0.18);
     });
   }
+
+  playGraze(streak = 1) {
+    const now = this.ctx.currentTime;
+    const baseFreq = Math.min(1480, 680 + streak * 55);
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.38, now + 0.09);
+    g.gain.setValueAtTime(0.11, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    osc.connect(g);
+    g.connect(this.fxGain);
+    osc.start(now);
+    osc.stop(now + 0.11);
+  }
+
+  playJump() {
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(210, now);
+    osc.frequency.exponentialRampToValueAtTime(510, now + 0.11);
+    g.gain.setValueAtTime(0.10, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.connect(g);
+    g.connect(this.fxGain);
+    osc.start(now);
+    osc.stop(now + 0.13);
+  }
 }

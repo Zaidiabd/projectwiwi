@@ -191,6 +191,14 @@ export class AudioManager {
     if (this.procedural) this.procedural.playPowerupPickup();
   }
 
+  playGraze(streak = 1) {
+    if (this.procedural) this.procedural.playGraze(streak);
+  }
+
+  playJump() {
+    if (this.procedural) this.procedural.playJump();
+  }
+
   getTrackTime() {
     if (!this.hasMusicLoaded && !this.musicActive) return null;
     return Number.isFinite(this.audioEl.currentTime) ? this.audioEl.currentTime : null;

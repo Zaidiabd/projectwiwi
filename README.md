@@ -12,7 +12,7 @@ An interactive 2.5D browser speed-running experience built with Three.js (WebGL 
 | `A` / `Arrow Left` | Steer left (track the laser slipstream) |
 | `D` / `Arrow Right` | Steer right (track the laser slipstream) |
 | `Shift` (hold) | Overdrive Boost |
-| `Space` | Temporal Burst (unlocks at `26s`; Stage II upgrade at `136s`) |
+| `Space` | Temporal Burst (unlocks at `26s`; Stage II upgrade at `136s`) — or agile **Cat Vault Hop** when Burst is locked/recharging |
 | `I` / `AI PLAYTHROUGH` | Toggle predictive AI autopilot (avoids all obstacles & optimizes speed) |
 | `P` / `Esc` | Pause / Resume |
 | `M` | Mute / Unmute audio |
@@ -61,4 +61,4 @@ All asset and module references use relative `./` paths and require **no build s
 - `src/player/ProceduralCatAtlas.js` + `CatAnimator.js` + `CatController.js`: 13-clip 2D sprite atlas (`2048x2048` `CanvasTexture`) matching the gray British Shorthair Munchkin design sheet (`assets/characters/wiwi-munchkin/design-sheet.jpg`), rendered with a custom rim-lit `ShaderMaterial` and grounded contact shadow.
 - `src/player/AutopilotAI.js`: Predictive AI playthrough controller forecasting static shards and lane-locked Dimensional Rift Pylons ahead of the cat while steering toward safe collectible powerups, slipstream, Boost, and Temporal Burst distance.
 - `src/core/TimeController.js`: Independent `realTime`, `playerTime`, `worldTime`, and `cinematicTime` domains with `dt` clamping (`<= 0.05s`) and `visibilitychange` auto-pause.
-- `src/world/` & `src/effects/`: Instanced 3D corridor, speed void, floating rift shards, interactive reality obstacles, pooled afterimages, pooled 3D lightning, custom GLSL volumetric rift portal, and a single-pass `CompositeShader` post-processing stage scaled by `Low` / `Medium` / `High` quality presets.
+- `src/world/` & `src/effects/`: Instanced 3D corridor, speed void, floating rift shards, grounded hazard rings + telegraphed Dimensional Rift Pylons + near-miss Graze bonus system, collectible powerup orbs (TEAR IV+), curved 3D slipstream ribbon, pooled afterimages, pooled 3D lightning, custom GLSL volumetric rift portal, and a single-pass `CompositeShader` post-processing stage scaled by `Low` / `Medium` / `High` quality presets with zero per-frame GC allocations.

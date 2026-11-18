@@ -60,7 +60,7 @@ const RIFT_FRAGMENT = /* glsl */ `
 const TEAR_WINDOWS = [
   { start: 32.0, hit: TIMELINE.tear1 },
   { start: 44.0, hit: TIMELINE.tear2 },
-  { start: 56.0, hit: TIMELINE.tear3Anomaly },
+  { start: 56.0, hit: TIMELINE.tear3RiftGates },
   { start: 69.0, hit: TIMELINE.tear4 },
   { start: TIMELINE.burst2Start, hit: TIMELINE.tear5 }
 ];
@@ -165,7 +165,7 @@ export class RiftEffect {
       this.ringMatA.color.set('#ffbe3b');
       this.ringMatB.color.set('#ff2a85');
       this.light.color.set('#ffbe3b');
-    } else if (state.anomalyMode && state.tearCount < 5) {
+    } else if (state.riftGateMode && state.tearCount < 5) {
       this.discMat.uniforms.uColorA.value.set('#2dd4bf');
       this.discMat.uniforms.uColorB.value.set('#d946ef');
       this.ringMatA.color.set('#2dd4bf');
