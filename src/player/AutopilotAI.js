@@ -1,7 +1,7 @@
 /**
  * Predictive AI Playthrough Controller for Project WIWI.
  * Forecasts static obsidian shard and lane-locked Dimensional Rift Pylon hazards ahead of the cat,
- * chooses the safest reachable lane closest to the laser slipstream & safe powerups, and
+ * chooses the safest reachable lane closest to the laser slipstream, and
  * optimizes Boost + Temporal Burst usage for maximum distance / peak speed.
  */
 export class AutopilotAI {
@@ -29,12 +29,12 @@ export class AutopilotAI {
     }
   }
 
-  computeInput(cat, state, laserX, obstaclesRef, worldScale, onRequestBurst, powerupsRef = null) {
+  computeInput(cat, state, laserX, obstaclesRef, worldScale, onRequestBurst) {
     if (!this.enabled || state.phase !== 'playing') {
       return null;
     }
 
-    const phaseProtected = state.burstActive || state.stage2BurstActive || state.shieldActive;
+    const phaseProtected = state.burstActive || state.stage2BurstActive;
     const speed = Math.max(18, state.speed);
     const maxLatVel = 13.0 / (1 + state.normalizedSpeed * 0.42);
     const lookahead = Math.min(95, 36 + speed * 0.62);
@@ -53,18 +53,6 @@ export class AutopilotAI {
       // Slight boundary comfort penalty so we don't hug walls unnecessarily
       if (Math.abs(candX) > 4.4) {
         score += 1.5;
-      }
-
-      // Gently pull toward safe collectible powerups ahead!
-      if (powerupsRef && powerupsRef.active) {
-        for (let i = 0; i < powerupsRef.items.length; i++) {
-          const pu = powerupsRef.items[i];
-          if (!pu.active || pu.z > 0.5 || pu.z < -lookahead * 0.8) continue;
-          const dx = Math.abs(candX - pu.x);
-          if (dx < 1.0) {
-            score -= (1.0 - dx) * 5.2;
-          }
-        }
       }
 
       if (!phaseProtected) {

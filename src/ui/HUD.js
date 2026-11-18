@@ -212,22 +212,9 @@ export class HUD {
       if (state.grazeTimer > 0 && state.grazeStreak > 0) {
         buffs.push(`GRAZE x${state.grazeStreak}`);
       }
-      if (state.shieldActive && state.shieldTimer > 0) {
-        buffs.push(`SHIELD ${state.shieldTimer.toFixed(1)}s`);
-      }
-      if (state.surgeTimer > 0) {
-        buffs.push(`SURGE +18% (${state.surgeTimer.toFixed(1)}s)`);
-      }
-      if (state.overdriveMode) {
-        buffs.push('DUAL OVERDRIVE');
-      }
       if (buffs.length > 0 && state.phase === 'playing') {
         this.powerupBuffEl.textContent = buffs.join('  •  ');
-        this.powerupBuffEl.style.borderColor = state.shieldActive
-          ? '#34d399'
-          : state.overdriveMode
-            ? '#ff2a4b'
-            : '#22e6ff';
+        this.powerupBuffEl.style.borderColor = '#22e6ff';
         this.powerupBuffEl.classList.remove('hidden');
       } else {
         this.powerupBuffEl.classList.add('hidden');

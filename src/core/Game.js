@@ -19,7 +19,6 @@ import { Corridor } from '../world/Corridor.js';
 import { VoidWorld } from '../world/VoidWorld.js';
 import { RiftWorld } from '../world/RiftWorld.js';
 import { ObstacleSystem } from '../world/ObstacleSystem.js';
-import { PowerupSystem } from '../world/PowerupSystem.js';
 
 import { AfterimageSystem } from '../effects/AfterimageSystem.js';
 import { LightningSystem } from '../effects/LightningSystem.js';
@@ -58,7 +57,6 @@ export class Game {
     this.voidWorld = new VoidWorld(this.scene);
     this.riftWorld = new RiftWorld(this.scene);
     this.obstacles = new ObstacleSystem(this.scene);
-    this.powerups = new PowerupSystem(this.scene);
     this.cat = new CatController(this.scene);
     this.lily = new LilyController(this.scene);
     this.autopilot = new AutopilotAI();
@@ -176,7 +174,6 @@ export class Game {
     this.afterimages.setQualityCount(cfg.afterimagePool);
     this.lightning.setQualityCount(cfg.lightningBolts);
     this.obstacles.setQualityCount(cfg.obstacles);
-    this.powerups.setQualityCount(cfg.obstacles);
     this.speedEffects.setQualityCount(cfg.id);
   }
 
@@ -338,7 +335,6 @@ export class Game {
     this.voidWorld.reset();
     this.riftWorld.reset();
     this.obstacles.reset();
-    this.powerups.reset();
     this.afterimages.reset();
     this.lightning.reset();
     this.rift.reset();
@@ -454,13 +450,6 @@ export class Game {
         cinematic: 1.0
       });
 
-      if (this.state.shieldTimer > 0) {
-        this.state.shieldTimer = Math.max(0, this.state.shieldTimer - realDt);
-        this.state.shieldActive = this.state.shieldTimer > 0;
-      }
-      if (this.state.surgeTimer > 0) {
-        this.state.surgeTimer = Math.max(0, this.state.surgeTimer - realDt);
-      }
       if (this.state.grazeTimer > 0) {
         this.state.grazeTimer = Math.max(0, this.state.grazeTimer - realDt);
         if (this.state.grazeTimer === 0) {
@@ -470,14 +459,13 @@ export class Game {
 
       const aiInput = this.autopilot.enabled
         ? this.autopilot.computeInput(
-          this.cat,
-          this.state,
-          this.environment.laserX,
-          this.obstacles.getObstaclesRef(),
-          this.time.worldScale,
-          () => this.tryTriggerBurst(),
-          this.powerups.getPowerupsRef()
-        )
+            this.cat,
+            this.state,
+            this.environment.laserX,
+            this.obstacles.getObstaclesRef(),
+            this.time.worldScale,
+            () => this.tryTriggerBurst()
+          )
         : null;
 
       const mergedInput = aiInput || {
@@ -543,7 +531,7 @@ export class Game {
         } else if (this.state.tearCount === 3) {
           this.hud.showBanner('TEAR III // 62s', 'RIFT PYLON GATES ACTIVE • STAY IN CLEAR LANES', '#2dd4bf', 3.0);
         } else if (this.state.tearCount === 4) {
-          this.hud.showBanner('TEAR IV // 75s', 'HYPERSTORM RUPTURE • TRACK POWERUPS UNLOCKED', '#e879f9', 3.0);
+          this.hud.showBanner('TEAR IV // 75s', 'HYPERSTORM RUPTURE • MAXIMUM ESCALATION', '#e879f9', 3.0);
         } else if (this.state.tearCount === 5) {
           // Lily bursts into the chase at TEAR V (142s)!
           this.audio.playAnnoyedPop();
@@ -580,16 +568,6 @@ export class Game {
             this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0, '#22e6ff', 10);
             this.audio.playPhaseShimmer();
           },
-          () => {
-            // Aegis Shield absorbed an obstacle hit!
-            this.state.shieldActive = false;
-            this.state.shieldTimer = 0;
-            this.flashValue = 0.14;
-            this.speedEffects.spawnShockwave(this.cat.x, this.cat.y + 0.4, 0.1, '#34d399', 8.5, 0.45);
-            this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y, 0, '#34d399', 14);
-            this.audio.playPhaseShimmer();
-            this.hud.showBanner('AEGIS SHIELD', 'HAZARD ABSORBED • ZERO SLOWDOWN!', '#34d399', 1.8);
-          },
           this.lily,
           (lx, lz) => {
             this.speedEffects.spawnImpactBurst(lx, 0.6, lz, '#fb7185', 10);
@@ -604,32 +582,10 @@ export class Game {
             if (this.state.burstUnlocked) {
               this.state.burstCharge = Math.min(1, this.state.burstCharge + 0.06);
             }
-            this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y + 0.42, 0.08, '#22e6ff', 7);
+            this.speedEffects.spawnImpactBurst(this.cat.x, this.cat.y + 0.42, 0.08, '#22e6ff', 6);
             this.audio.playGraze(this.state.grazeStreak);
           }
         );
-        this.powerups.update(this.time.worldDt, this.cat, this.state, (spec, px, pz) => {
-          this.state.powerupsCollected++;
-          if (spec.id === 'surge') {
-            this.state.boostEnergy = Math.min(1, this.state.boostEnergy + 0.35);
-            this.state.surgeTimer = 3.5;
-            this.cat.speed += 12;
-          } else if (spec.id === 'shield') {
-            this.state.shieldActive = true;
-            this.state.shieldTimer = 12.0;
-          } else if (spec.id === 'charge') {
-            if (this.state.burstUnlocked) {
-              this.state.burstCharge = Math.min(1, this.state.burstCharge + 0.45);
-            } else {
-              this.state.boostEnergy = Math.min(1, this.state.boostEnergy + 0.5);
-            }
-          }
-          this.flashValue = Math.max(this.flashValue, 0.14);
-          this.speedEffects.spawnShockwave(px, 0.35, pz, spec.color, 7.5, 0.42);
-          this.speedEffects.spawnImpactBurst(px, 0.7, pz, spec.color, 12);
-          this.audio.playPowerupPickup();
-          this.hud.showBanner(spec.label, spec.sub, spec.color, 2.0);
-        });
         this.afterimages.update(this.time.worldDt, this.cat, this.state);
         this.lightning.update(this.time.worldDt, this.cat, this.state, beatEnergy, this.lily);
         this.rift.update(this.time.worldDt, realDt, this.state, beatEnergy);

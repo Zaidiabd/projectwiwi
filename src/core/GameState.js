@@ -80,13 +80,8 @@ export class GameState {
 
     this.bodyChargeLevel = 0; // 0 before 38s, 1..5 escalating at each tear
     this.riftGateMode = false; // lane-locked Dimensional Rift Pylon gates starting at 62s
-    this.overdriveMode = false; // Dual Overdrive powerup on both Wiwi & Lily halfway through TEAR V (179s+)
+    this.overdriveMode = false; // Final overdrive speed surge starting at 179s+
 
-    // Collectible pickup powerup buffs & skill telemetry
-    this.shieldActive = false;
-    this.shieldTimer = 0;
-    this.surgeTimer = 0;
-    this.powerupsCollected = 0;
     this.grazeCount = 0;
     this.grazeStreak = 0;
     this.grazeTimer = 0;

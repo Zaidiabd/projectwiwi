@@ -16,9 +16,9 @@ export class ObstacleSystem {
     this.mat = new THREE.MeshStandardMaterial({
       color: '#0f172a',
       emissive: '#ff2a4b',
-      emissiveIntensity: 0.95,
-      roughness: 0.22,
-      metalness: 0.82,
+      emissiveIntensity: 0.9,
+      roughness: 0.24,
+      metalness: 0.8,
       transparent: true,
       opacity: 0.92
     });
@@ -27,47 +27,31 @@ export class ObstacleSystem {
     this.mesh.frustumCulled = false;
     this.scene.add(this.mesh);
 
-    // Grounded hazard base rings under each shard for crisp 3D depth perception
-    const baseRingGeom = new THREE.RingGeometry(0.48, 0.66, 20);
-    baseRingGeom.rotateX(-Math.PI / 2);
-    baseRingGeom.translate(0, 0.022, 0);
-    this.baseRingMat = new THREE.MeshBasicMaterial({
-      color: '#ff2a4b',
-      transparent: true,
-      opacity: 0.48,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide
-    });
-    this.baseRingMesh = new THREE.InstancedMesh(baseRingGeom, this.baseRingMat, MAX_OBSTACLES);
-    this.baseRingMesh.frustumCulled = false;
-    this.scene.add(this.baseRingMesh);
-
-    // 2. Dimensional Rift Pylon Gates (fair, lane-locked & telegraphed obstacles starting at 62s)
-    const pylonGeom = new THREE.CylinderGeometry(0.26, 0.44, 2.38, 6);
-    pylonGeom.translate(0, 1.19, 0);
+    // 2. Dimensional Rift Pylon Gates (fair, lane-locked obstacles starting at 62s)
+    const pylonGeom = new THREE.CylinderGeometry(0.26, 0.42, 2.35, 6);
+    pylonGeom.translate(0, 1.18, 0);
     this.pylonMat = new THREE.MeshStandardMaterial({
       color: '#091524',
       emissive: '#2dd4bf',
-      emissiveIntensity: 1.25,
-      roughness: 0.16,
-      metalness: 0.86,
+      emissiveIntensity: 1.15,
+      roughness: 0.18,
+      metalness: 0.85,
       transparent: true,
-      opacity: 0.95
+      opacity: 0.94
     });
 
     this.pylonMesh = new THREE.InstancedMesh(pylonGeom, this.pylonMat, MAX_GATES);
     this.pylonMesh.frustumCulled = false;
     this.scene.add(this.pylonMesh);
 
-    // Ground telegraph lane warning strip ahead of each pylon so dodge path is unmistakable
-    const stripGeom = new THREE.PlaneGeometry(0.95, 16.0);
+    // Restrained ground telegraph lane strip ahead of each pylon
+    const stripGeom = new THREE.PlaneGeometry(0.75, 9.0);
     stripGeom.rotateX(-Math.PI / 2);
-    stripGeom.translate(0, 0.025, 8.0);
+    stripGeom.translate(0, 0.024, 4.5);
     this.stripMat = new THREE.MeshBasicMaterial({
       color: '#2dd4bf',
       transparent: true,
-      opacity: 0.34,
+      opacity: 0.22,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide
@@ -108,14 +92,12 @@ export class ObstacleSystem {
     this.activeCount = Math.min(MAX_OBSTACLES, count);
     this.gateLimit = Math.min(MAX_GATES, Math.max(4, Math.floor(count * 0.5)));
     this.mesh.count = this.activeCount;
-    this.baseRingMesh.count = this.activeCount;
     this.pylonMesh.count = this.gateLimit;
     this.stripMesh.count = this.gateLimit;
   }
 
   reset() {
     this.mesh.visible = false;
-    this.baseRingMesh.visible = false;
     this.pylonMesh.visible = false;
     this.stripMesh.visible = false;
     for (let i = 0; i < MAX_OBSTACLES; i++) {
@@ -134,20 +116,9 @@ export class ObstacleSystem {
     }
   }
 
-  update(
-    worldDt,
-    cat,
-    state,
-    onHit,
-    onPhase,
-    onShieldAbsorb,
-    lily = null,
-    onLilyHit = null,
-    onGraze = null
-  ) {
+  update(worldDt, cat, state, onHit, onPhase, lily = null, onLilyHit = null, onGraze = null) {
     if (state.actIndex < 1 || state.actIndex >= 4 || state.runElapsed > 212) {
       this.mesh.visible = false;
-      this.baseRingMesh.visible = false;
       this.pylonMesh.visible = false;
       this.stripMesh.visible = false;
       return;
@@ -157,19 +128,12 @@ export class ObstacleSystem {
 
     // 1. Standard floor shards
     this.mesh.visible = true;
-    this.baseRingMesh.visible = true;
     if (phaseProtected) {
-      const pCol = state.stage2BurstActive ? '#ffbe3b' : '#22e6ff';
-      this.mat.emissive.set(pCol);
+      this.mat.emissive.set(state.stage2BurstActive ? '#ffbe3b' : '#22e6ff');
       this.mat.opacity = 0.36;
-      this.baseRingMat.color.set(pCol);
-      this.baseRingMat.opacity = 0.22;
     } else {
-      const sCol = state.riftGateMode ? '#d946ef' : '#ff2a4b';
-      this.mat.emissive.set(sCol);
+      this.mat.emissive.set(state.riftGateMode ? '#d946ef' : '#ff2a4b');
       this.mat.opacity = 0.92;
-      this.baseRingMat.color.set(sCol);
-      this.baseRingMat.opacity = 0.46;
     }
 
     const density = state.actIndex === 1 ? 0.45 : state.tearCount < 2 ? 0.7 : 1.0;
@@ -182,7 +146,6 @@ export class ObstacleSystem {
         this.dummy.scale.setScalar(0.01);
         this.dummy.updateMatrix();
         this.mesh.setMatrixAt(i, this.dummy.matrix);
-        this.baseRingMesh.setMatrixAt(i, this.dummy.matrix);
         continue;
       }
 
@@ -206,8 +169,6 @@ export class ObstacleSystem {
           it.grazed = true;
           if (phaseProtected) {
             if (onPhase) onPhase();
-          } else if (state.shieldActive) {
-            if (onShieldAbsorb) onShieldAbsorb();
           } else {
             cat.applyImpactSlowdown(state.overdriveMode);
             if (onHit) onHit();
@@ -215,7 +176,6 @@ export class ObstacleSystem {
         }
       }
 
-      // Near-miss graze reward when passing close without colliding (or vaulting cleanly over)
       if (it.active && !it.grazed && it.z > 0.15 && it.z < 3.5) {
         const dx = Math.abs(it.x - cat.x);
         const vaultedOver = dx < 0.78 && cat.y >= 0.8;
@@ -247,16 +207,10 @@ export class ObstacleSystem {
       this.dummy.scale.setScalar(it.active ? 1 : 0.01);
       this.dummy.updateMatrix();
       this.mesh.setMatrixAt(i, this.dummy.matrix);
-
-      this.dummy.rotation.set(0, 0, 0);
-      this.dummy.scale.setScalar(it.active ? 1.0 + Math.sin(it.spin * 2) * 0.1 : 0.01);
-      this.dummy.updateMatrix();
-      this.baseRingMesh.setMatrixAt(i, this.dummy.matrix);
     }
     this.mesh.instanceMatrix.needsUpdate = true;
-    this.baseRingMesh.instanceMatrix.needsUpdate = true;
 
-    // 2. Dimensional Rift Pylon Gates (active from 62s onward — stationary lane positions + clear telegraphs!)
+    // 2. Dimensional Rift Pylon Gates (active from 62s onward)
     if (!state.riftGateMode) {
       this.pylonMesh.visible = false;
       this.stripMesh.visible = false;
@@ -269,22 +223,22 @@ export class ObstacleSystem {
       this.pylonMat.emissive.set('#ffbe3b');
       this.pylonMat.opacity = 0.36;
       this.stripMat.color.set('#ffbe3b');
-      this.stripMat.opacity = 0.14;
+      this.stripMat.opacity = 0.12;
     } else if (state.tearCount >= 5) {
       this.pylonMat.emissive.set('#ff2a4b');
-      this.pylonMat.opacity = 0.96;
+      this.pylonMat.opacity = 0.95;
       this.stripMat.color.set('#ff2a4b');
-      this.stripMat.opacity = 0.36;
+      this.stripMat.opacity = 0.24;
     } else if (state.tearCount >= 4) {
       this.pylonMat.emissive.set('#e879f9');
-      this.pylonMat.opacity = 0.95;
+      this.pylonMat.opacity = 0.94;
       this.stripMat.color.set('#e879f9');
-      this.stripMat.opacity = 0.34;
+      this.stripMat.opacity = 0.22;
     } else {
       this.pylonMat.emissive.set('#2dd4bf');
       this.pylonMat.opacity = 0.94;
       this.stripMat.color.set('#2dd4bf');
-      this.stripMat.opacity = 0.32;
+      this.stripMat.opacity = 0.20;
     }
 
     const gateDensity = state.tearCount >= 4 ? 1.0 : 0.7;
@@ -301,7 +255,6 @@ export class ObstacleSystem {
         continue;
       }
 
-      // Moves cleanly straight along track Z at world speed with zero horizontal swerving
       g.z += state.speed * worldDt;
       g.phase += worldDt * 3.0;
       if (g.hitCooldown > 0) g.hitCooldown -= worldDt;
@@ -321,8 +274,6 @@ export class ObstacleSystem {
           g.grazed = true;
           if (phaseProtected) {
             if (onPhase) onPhase();
-          } else if (state.shieldActive) {
-            if (onShieldAbsorb) onShieldAbsorb();
           } else {
             cat.applyImpactSlowdown(state.overdriveMode);
             if (onHit) onHit();
@@ -330,7 +281,6 @@ export class ObstacleSystem {
         }
       }
 
-      // Near-miss graze reward on Rift Pylons
       if (g.active && !g.grazed && g.z > 0.15 && g.z < 3.5) {
         const dx = Math.abs(g.x - cat.x);
         if (dx >= 0.76 && dx <= 1.52) {
@@ -373,9 +323,6 @@ export class ObstacleSystem {
     this.stripMesh.instanceMatrix.needsUpdate = true;
   }
 
-  /**
-   * Exposes active obstacle lists for predictive AI playthrough avoidance.
-   */
   getObstaclesRef() {
     return {
       shardsActive: this.mesh.visible,

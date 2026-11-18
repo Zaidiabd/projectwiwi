@@ -185,14 +185,14 @@ export class CatController {
     this.spriteMesh.renderOrder = 10;
     this.group.add(this.spriteMesh);
 
-    // Pulsing cosmic overdrive plasma aura behind Wiwi (179s+)
+    // Restrained overdrive back-aura behind Wiwi (179s+)
     this.auraTex = createOverdriveAuraTexture();
-    const auraGeom = new THREE.PlaneGeometry(2.75, 2.5);
-    auraGeom.translate(0, 1.08, 0);
+    const auraGeom = new THREE.PlaneGeometry(2.45, 2.25);
+    auraGeom.translate(0, 1.02, 0);
     this.auraMat = new THREE.MeshBasicMaterial({
       map: this.auraTex,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.55,
       blending: THREE.AdditiveBlending,
       depthWrite: false
     });
@@ -201,40 +201,6 @@ export class CatController {
     this.auraMesh.renderOrder = 9;
     this.auraMesh.visible = false;
     this.group.add(this.auraMesh);
-
-    // Rotating orbital overdrive energy ring around Wiwi (179s+)
-    const ringGeom = new THREE.RingGeometry(0.95, 1.15, 36);
-    this.overdriveRingMat = new THREE.MeshBasicMaterial({
-      color: '#38f3ff',
-      transparent: true,
-      opacity: 0.72,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide
-    });
-    this.overdriveRingMesh = new THREE.Mesh(ringGeom, this.overdriveRingMat);
-    this.overdriveRingMesh.position.set(0, 0.72, 0.05);
-    this.overdriveRingMesh.rotation.x = Math.PI * 0.36;
-    this.overdriveRingMesh.renderOrder = 11;
-    this.overdriveRingMesh.visible = false;
-    this.group.add(this.overdriveRingMesh);
-
-    // Collectible Aegis Shield protective halo ring
-    const shieldGeom = new THREE.RingGeometry(1.12, 1.28, 36);
-    shieldGeom.rotateX(-Math.PI / 2);
-    this.shieldMat = new THREE.MeshBasicMaterial({
-      color: '#34d399',
-      transparent: true,
-      opacity: 0.75,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide
-    });
-    this.shieldMesh = new THREE.Mesh(shieldGeom, this.shieldMat);
-    this.shieldMesh.position.y = 0.25;
-    this.shieldMesh.renderOrder = 12;
-    this.shieldMesh.visible = false;
-    this.group.add(this.shieldMesh);
 
     // Grounded projected shadow decal
     this.shadowTex = createShadowTexture();
@@ -286,8 +252,6 @@ export class CatController {
     this.spriteMesh.scale.set(1, 1, 1);
     this.angerMesh.visible = false;
     this.auraMesh.visible = false;
-    this.overdriveRingMesh.visible = false;
-    this.shieldMesh.visible = false;
     this.spriteMaterial.uniforms.uOverdrive.value = 0.0;
 
     this.animator.play('idle', { restart: true });
@@ -317,14 +281,13 @@ export class CatController {
     }
 
     update(playerDt, input, state, laserX, worldScale) {
-      // 1. Speed & boost simulation escalating through each tear stage + Dual Overdrive (179s+) + pickup surge
+      // 1. Speed & boost simulation escalating through each tear stage + Dual Overdrive (179s+)
       const tearEscalation = state.tearCount * 12;
       const stage2Bonus = state.stage2BurstActive ? 22 : 0;
       const overdriveClimb = state.overdriveMode ? Math.max(0, state.runElapsed - 179.0) * 1.15 : 0;
       const overdriveBonus = state.overdriveMode ? 22 + overdriveClimb : 0;
-      const pickupMult = state.surgeTimer > 0 ? 1.18 : 1.0;
-      const baseMaxSpeed = (28 + state.actIndex * 8 + tearEscalation + stage2Bonus + overdriveBonus) * pickupMult;
-      const boostMaxSpeed = (48 + state.actIndex * 10 + tearEscalation * 1.2 + stage2Bonus * 1.15 + overdriveBonus * 1.25) * pickupMult;
+      const baseMaxSpeed = 28 + state.actIndex * 8 + tearEscalation + stage2Bonus + overdriveBonus;
+      const boostMaxSpeed = 48 + state.actIndex * 10 + tearEscalation * 1.2 + stage2Bonus * 1.15 + overdriveBonus * 1.25;
       const wantsBoost = input.boost && state.boostEnergy > 0.04;
       state.isBoosting = wantsBoost && (input.forward || this.speed > 4);
 
@@ -449,40 +412,26 @@ export class CatController {
       this.shadowMesh.scale.setScalar(hFactor);
       this.shadowMat.opacity = 0.68 * hFactor;
 
-      // Dual Overdrive plasma transformation & orbital ring (179s+)
+      // Clean Overdrive plasma rim & soft back-aura (179s+)
       const targetOverdrive = state.overdriveMode ? 1.0 : 0.0;
       this.spriteMaterial.uniforms.uOverdrive.value +=
         (targetOverdrive - this.spriteMaterial.uniforms.uOverdrive.value) * (1 - Math.exp(-8 * playerDt));
 
       this.auraMesh.visible = state.overdriveMode;
-      this.overdriveRingMesh.visible = state.overdriveMode;
       if (state.overdriveMode) {
         const t = state.runElapsed;
         this.auraMesh.position.y = this.y;
-        const sx = 1.06 + Math.sin(t * 28) * 0.14;
-        const sy = 1.12 + Math.cos(t * 34) * 0.16;
+        const sx = 1.02 + Math.sin(t * 24) * 0.08;
+        const sy = 1.05 + Math.cos(t * 28) * 0.10;
         this.auraMesh.scale.set(sx, sy, 1);
-        this.auraMat.opacity = 0.74 + Math.sin(t * 42) * 0.22;
-
-        this.overdriveRingMesh.position.y = this.y + 0.72;
-        this.overdriveRingMesh.rotation.z += playerDt * 7.5;
-        this.overdriveRingMesh.rotation.y = Math.sin(t * 5) * 0.4;
-        this.overdriveRingMesh.scale.setScalar(1.0 + Math.sin(t * 20) * 0.12);
-        this.overdriveRingMat.color.set(Math.sin(t * 16) > 0 ? '#38f3ff' : '#ff2a4b');
-      }
-
-      this.shieldMesh.visible = state.shieldActive;
-      if (state.shieldActive) {
-        this.shieldMesh.position.y = this.y + 0.24;
-        this.shieldMesh.rotation.z += playerDt * 4.5;
-        this.shieldMesh.scale.setScalar(0.95 + Math.sin(state.runElapsed * 12) * 0.09);
+        this.auraMat.opacity = 0.45 + Math.sin(t * 36) * 0.14;
       }
 
       // Update rim-light color with Dual Overdrive, tear stage, rift gates & burst stage
       const rim = this.spriteMaterial.uniforms.uRimColor.value;
       if (state.overdriveMode) {
         rim.set(Math.sin(state.runElapsed * 16) > 0 ? '#38f3ff' : '#ff2a4b');
-        this.spriteMaterial.uniforms.uRimIntensity.value = 1.42;
+        this.spriteMaterial.uniforms.uRimIntensity.value = 1.28;
       } else if (state.stage2BurstActive || (state.burstActive && state.burstStage === 2)) {
         rim.set('#ffbe3b');
         this.spriteMaterial.uniforms.uRimIntensity.value = 1.25;
@@ -579,8 +528,6 @@ export class CatController {
 
       // Dual Overdrive powerup fades cleanly into normal cozy Munchkin once landing in the peaceful room
       this.auraMesh.visible = step === 0;
-      this.overdriveRingMesh.visible = false;
-      this.shieldMesh.visible = false;
       this.spriteMaterial.uniforms.uOverdrive.value = step === 0 ? 1.0 : Math.max(0, this.spriteMaterial.uniforms.uOverdrive.value - dt * 2.5);
 
       this.angerMesh.visible = showAnger;

@@ -143,23 +143,20 @@ high-speed intensity:
 -   `62s`: Third space-time tear (`Dimensional Rift Pylon Gates`);
     environment shifts to a crisp teal-magenta overdrive palette and
     fair, lane-locked rift pylons with floor telegraph strips appear.
--   `75s`: Fourth space-time tear; hyperstorm escalation — collectible
-    track powerup orbs (`Velocity Surge`, `Aegis Shield`, `Temporal Cell`)
-    unlock and spawn from Tear IV onward.
+-   `75s`: Fourth space-time tear; hyperstorm escalation.
 -   `136s--142s`: **Stage 2 Temporal Burst** (distinct golden-crimson
     time-dilation surge) leading into the fifth space-time tear at `142s`.
 -   `142s--216s`: **TEAR V** — High-priority **`! RIVAL DETECTED !`**
     tactical alert fires as bigger long-haired black-and-white cat
     **Lily** joins the chase alongside Wiwi while Wiwi displays an
     annoyed pulsing anger symbol (`💢`) overhead.
--   `179s`: **Dual Overdrive Powerup** halfway through TEAR V — Both
-    Wiwi and Lily ignite into synchronized Overdrive while keeping their
-    natural coats intact: pulsing multi-flame plasma auras, orbiting
-    energy halo rings, glowing silhouette rims, thick red/black/blue
-    lightning on Wiwi paired with emerald/crimson/black lightning and
-    sparks on Lily, plus supersonic smeared afterimages. After `179s`,
-    both cats are hindered by only 20% on obstacle hits and keep
-    gaining speed continuously.
+-   `179s`: **Dual Overdrive** halfway through TEAR V — Both Wiwi and
+    Lily ignite into synchronized Overdrive while keeping their natural
+    coats intact: subtle plasma back-auras, glowing silhouette rims,
+    thick red/black/blue lightning on Wiwi paired with
+    emerald/crimson/black lightning and sparks on Lily, plus supersonic
+    smeared afterimages. After `179s`, both cats are hindered by only
+    20% on obstacle hits and keep gaining speed continuously.
 -   `216s`: Final dual leap into Act 5 (`The Laser Reveal`): clearing
     `>= 23,000 m` lets Wiwi beat Lily to the laser (`UNIVERSE DESTROYED.
     LASER ACQUIRED.`); falling short lets Lily steal it instead.
@@ -849,9 +846,8 @@ GitHub Pages-ready implementation deployed at
     (`AutopilotAI.js`).
 -   **3D worlds, effects & post-processing:** `InstancedMesh` corridor,
     speed void, floating rift shards + late-run cosmic warp rings,
-    standard shards with grounded hazard rings + lane-locked Dimensional
-    Rift Pylon gates + near-miss Graze streak system + collectible powerup
-    orbs (TEAR IV+), curved 3D volumetric slipstream ribbon, Act 5
+    standard shards + lane-locked Dimensional Rift Pylon gates +
+    near-miss Graze streak system, curved 3D volumetric slipstream ribbon, Act 5
     peaceful living room props, pooled afterimages, pooled 3D lightning +
     cat body charges, custom GLSL volumetric rift (`RiftEffect.js`),
     stage announcement banners + TEAR V Rivalry Pace widget, and

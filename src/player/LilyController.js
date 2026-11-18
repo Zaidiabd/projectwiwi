@@ -144,8 +144,8 @@ export class LilyController {
     this.group.add(this.spriteMesh);
 
     this.auraTex = createLilyOverdriveAuraTexture();
-    const auraGeom = new THREE.PlaneGeometry(3.6, 3.2);
-    auraGeom.translate(0, 1.32, 0);
+    const auraGeom = new THREE.PlaneGeometry(3.2, 2.8);
+    auraGeom.translate(0, 1.25, 0);
     this.auraMat = new THREE.MeshBasicMaterial({
       map: this.auraTex,
       transparent: true,
@@ -159,23 +159,6 @@ export class LilyController {
     this.auraMesh.renderOrder = 8;
     this.auraMesh.visible = false;
     this.group.add(this.auraMesh);
-
-    // Orbital overdrive energy ring around Lily (179s+)
-    const ringGeom = new THREE.RingGeometry(1.18, 1.42, 36);
-    this.overdriveRingMat = new THREE.MeshBasicMaterial({
-      color: '#34d399',
-      transparent: true,
-      opacity: 0.72,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide
-    });
-    this.overdriveRingMesh = new THREE.Mesh(ringGeom, this.overdriveRingMat);
-    this.overdriveRingMesh.position.set(0, 0.95, 0.06);
-    this.overdriveRingMesh.rotation.x = Math.PI * 0.36;
-    this.overdriveRingMesh.renderOrder = 10;
-    this.overdriveRingMesh.visible = false;
-    this.group.add(this.overdriveRingMesh);
 
     this.shadowTex = createShadowTexture();
     const shadowGeom = new THREE.PlaneGeometry(1.95, 1.35);
@@ -208,9 +191,6 @@ export class LilyController {
     if (this.auraMesh) {
       this.auraMesh.visible = false;
       this.auraMat.opacity = 0;
-    }
-    if (this.overdriveRingMesh) {
-      this.overdriveRingMesh.visible = false;
     }
     this.animator.play('run_rear', { restart: true });
     this.syncUV();
@@ -264,24 +244,17 @@ export class LilyController {
 
     if (overdrive > 0.5) {
       this.mat.uniforms.uRimColor.value.set(Math.sin(this.overdrivePhase) > 0 ? '#34d399' : '#ff2a4b');
-      this.mat.uniforms.uRimIntensity.value = 1.15 + 0.28 * Math.sin(this.overdrivePhase * 1.4);
+      this.mat.uniforms.uRimIntensity.value = 1.05 + 0.22 * Math.sin(this.overdrivePhase * 1.4);
       this.auraMesh.visible = true;
-      const sx = 1.04 + 0.12 * Math.sin(this.overdrivePhase * 1.6);
-      const sy = 1.08 + 0.16 * Math.cos(this.overdrivePhase * 2.1);
+      const sx = 1.0 + 0.08 * Math.sin(this.overdrivePhase * 1.6);
+      const sy = 1.02 + 0.10 * Math.cos(this.overdrivePhase * 2.1);
       this.auraMesh.scale.set(sx, sy, 1);
-      this.auraMat.opacity = 0.72 + 0.22 * Math.sin(this.overdrivePhase * 2.5);
-
-      this.overdriveRingMesh.visible = true;
-      this.overdriveRingMesh.rotation.z -= playerDt * 7.2;
-      this.overdriveRingMesh.rotation.y = Math.cos(this.overdrivePhase * 0.35) * 0.4;
-      this.overdriveRingMesh.scale.setScalar(1.0 + Math.sin(this.overdrivePhase * 1.5) * 0.12);
-      this.overdriveRingMat.color.set(Math.sin(this.overdrivePhase) > 0 ? '#34d399' : '#fb7185');
+      this.auraMat.opacity = 0.44 + 0.14 * Math.sin(this.overdrivePhase * 2.5);
     } else {
       this.mat.uniforms.uRimColor.value.set('#ff2a4b');
       this.mat.uniforms.uRimIntensity.value = 0.62;
       this.auraMesh.visible = false;
       this.auraMat.opacity = 0;
-      this.overdriveRingMesh.visible = false;
     }
     this.group.position.set(this.x, 0, this.z);
     this.spriteMesh.position.y = 0;
@@ -341,8 +314,7 @@ export class LilyController {
 
     this.mat.uniforms.uOverdrive.value = step === 0 ? Math.max(0, 1 - endingTimer * 0.4) : 0;
     this.auraMesh.visible = step === 0 && this.mat.uniforms.uOverdrive.value > 0.1;
-    this.auraMat.opacity = this.mat.uniforms.uOverdrive.value * 0.6;
-    this.overdriveRingMesh.visible = false;
+    this.auraMat.opacity = this.mat.uniforms.uOverdrive.value * 0.45;
     this.mat.uniforms.uRimColor.value.set('#cbd5e1');
     this.mat.uniforms.uRimIntensity.value = 0.35;
     this.group.position.set(this.x, 0, this.z);

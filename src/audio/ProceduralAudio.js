@@ -251,25 +251,6 @@ export class ProceduralAudio {
     });
   }
 
-  playPowerupPickup() {
-    const now = this.ctx.currentTime;
-    // Sparkling ascending 3-note chime when picking up a track powerup orb
-    [523.25, 659.25, 987.77].forEach((freq, i) => {
-      const t = now + i * 0.048;
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, t);
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.12, t + 0.14);
-      g.gain.setValueAtTime(0.18, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-      osc.connect(g);
-      g.connect(this.fxGain);
-      osc.start(t);
-      osc.stop(t + 0.18);
-    });
-  }
-
   playGraze(streak = 1) {
     const now = this.ctx.currentTime;
     const baseFreq = Math.min(1480, 680 + streak * 55);

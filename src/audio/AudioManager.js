@@ -187,10 +187,6 @@ export class AudioManager {
     if (this.procedural) this.procedural.playRivalAlert();
   }
 
-  playPowerupPickup() {
-    if (this.procedural) this.procedural.playPowerupPickup();
-  }
-
   playGraze(streak = 1) {
     if (this.procedural) this.procedural.playGraze(streak);
   }
